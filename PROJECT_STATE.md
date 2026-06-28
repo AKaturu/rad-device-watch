@@ -6,63 +6,36 @@
 rad-device-watch
 
 ### Goal
-A comprehensive radiology device monitoring tool — inventory management, uptime/downtime tracking, usage auditing, and proactive alerting. Data sources: CSV/Excel, DICOM files, HL7 v2 messages, DICOM MPPS polling.
+Provide a radiology device monitoring toolkit for inventory management, uptime/downtime tracking, usage auditing, import/export workflows, dashboard review, and configurable alerting.
 
 ### Current Status
-Phase 1 (Requirements) — complete. Moving to Phase 2 (Research).
+Phase 1 MVP complete. Core CLI, SQLite storage, inventory, downtime, uptime, usage auditing, alert rules, CSV export, importers, Streamlit dashboard, tests, and README demo media tooling are implemented.
 
----
+### 2026-06-28 Demo Media Update
+- Added reproducible demo media generation from real `rad-device-watch` CLI commands.
+- Added README demo GIF and demo-media documentation.
+- Added `media` optional dependencies for Pillow/ImageIO rendering.
+- Updated `.gitignore` for generated output and temp folders.
+- Verified the GitHub repository description already exists: "Radiology device monitoring - inventory, uptime/downtime, usage auditing, and alerting."
 
 ## Completed Features
 
-*None yet — project initialization*
+- Device inventory CRUD with manufacturer, model, serial, station, modality, location, department, and status fields.
+- Downtime logging and uptime calculation over a requested period.
+- Usage-record entry and procedure-volume summary reports.
+- Alert rules for downtime, uptime, and usage thresholds.
+- CSV export for devices, downtime events, and usage records.
+- CSV/Excel, DICOM, HL7, and MPPS-oriented importer modules.
+- Streamlit dashboard entrypoint.
+- Test suite covering database, models, inventory, downtime, usage, alerts, importers, and exporters.
+- Reproducible README media generator.
 
----
+## Validation
 
-## Current Work
+- Pending after this update: install media extras, regenerate demo assets, run lint/tests, commit, and push.
 
-### Active Feature
-Project scaffolding and requirements
+## Remaining Work
 
-### Progress
-- Requirements documented in REQUIREMENTS.md
-- Storage: SQLite + CSV export
-- Alert channels: console, dashboard, email, slack webhook, CLI-runner
-- Data sources: CSV, DICOM, HL7 v2 (ORM/ORU/MDM/ADT/configurable), MPPS polling
-- MVP: full scope (all modules built)
-
-### Remaining Work
-1. Research phase — investigate DICOM device tags, HL7 device parsing, MPPS standard
-2. Architecture design — module boundaries, data model, service layer
-3. Implementation
-4. Testing
-5. Validation
-6. Handoff
-
----
-
-## Next Actions
-
-1. Read workflows/research.md and begin research phase
-
----
-
-## Risks
-
-### Open Questions
-- None — requirements clear
-
-### Known Issues
-- None yet
-
-### Technical Concerns
-- HL7 v2 is a broad standard; will implement configurable field mapping rather than hard-coding every message type
-- DICOM MPPS polling design needs care to avoid excessive load on PACS
-
----
-
-## Resume Instructions
-
-Start: read REQUIREMENTS.md, then run the research workflow.
-Root: D:\Codex\rad-device-watch
-First command to verify: `git init && git add -A && git commit -m "Initial commit: requirements"` (after project init)
+- Add native release packaging if this project should have downloadable desktop/CLI artifacts like the other repos.
+- Add a richer dashboard screenshot/video once UI workflows are polished.
+- Validate DICOM/HL7 importers against institution-approved synthetic fixtures.

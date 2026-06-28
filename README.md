@@ -5,50 +5,55 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
-**Radiology device monitoring — inventory management, uptime/downtime tracking, usage auditing, and proactive alerting.**
+**Radiology device monitoring for inventory, uptime/downtime, usage auditing, and proactive alerting.**
 
-`rad-device-watch` is a comprehensive tool for radiology departments to track their imaging devices, monitor availability, audit procedure volumes, and receive alerts when metrics cross configurable thresholds. Supports manual entry, CSV/Excel import, DICOM file extraction, HL7 v2 message parsing, and DICOM MPPS polling.
+![rad-device-watch demo](docs/assets/demo.gif)
+
+`rad-device-watch` helps radiology teams track imaging-device inventory, monitor availability, audit procedure volumes, and alert when device metrics cross configurable thresholds. It supports manual entry, CSV/Excel import, DICOM file extraction, HL7 v2 message parsing, DICOM MPPS-oriented polling, CSV export, and a Streamlit dashboard.
 
 ## Quick Start
 
 ```bash
-pip install rad-device-watch
+git clone https://github.com/AKaturu/rad-device-watch.git
+cd rad-device-watch
+python -m pip install -e ".[app]"
 rad-device-watch init
-rad-device-watch device-add --name "CT1" --manufacturer Siemens --modality CT
-rad-device-watch uptime --device-id 1 --start 2026-01-01 --end 2026-06-30
+rad-device-watch device-add "CT1" --manufacturer Siemens --modality CT
+rad-device-watch uptime 2026-01-01 2026-06-30
+rad-device-watch serve
 ```
 
 ## What It Does
 
-- **Device Inventory** — track name, manufacturer, model, serial number, modality, location, software version, and status
-- **Uptime / Downtime** — log downtime events with cause and impact level; compute uptime percentage for any period
-- **Usage Auditing** — record procedure volumes per device; trend analysis (increasing/stable/decreasing) with outlier detection
-- **Alerting** — configurable rules on downtime duration, uptime percentage, or usage volume; dispatch via console, email, Slack webhook, or generic webhook
-- **Data Sources** — manual entry, CSV/Excel import, DICOM file device module extraction, HL7 v2 messages (ORM/ORU/MDM/ADT), DICOM MPPS polling
-- **Reporting** — rich console tables, plain-text summaries, and CSV export
-- **Dashboard** — interactive Streamlit web UI for monitoring and management
+- Device inventory: track name, manufacturer, model, serial number, modality, location, software version, and status.
+- Uptime and downtime: log downtime events with cause and impact level, then compute uptime percentage for any period.
+- Usage auditing: record procedure volumes per device and summarize usage across a date range.
+- Alerting: configure rules on downtime duration, uptime percentage, or usage volume.
+- Data sources: manual entry, CSV/Excel import, DICOM file device-module extraction, HL7 v2 messages, and DICOM MPPS-oriented polling.
+- Reporting: rich console tables, plain-text summaries, and CSV export.
+- Dashboard: interactive Streamlit web UI for monitoring and management.
 
 ## CLI Commands
 
 | Command | Description |
 |---|---|
-| `rad-device-watch init` | Initialize the database schema |
-| `rad-device-watch device-add` | Register a new device |
-| `rad-device-watch device-list` | List all devices |
-| `rad-device-watch device-get <id>` | Show device details |
-| `rad-device-watch device-delete <id>` | Remove a device |
-| `rad-device-watch import-csv <file>` | Import devices/downtime/usage from CSV or Excel |
-| `rad-device-watch import-dicom <path>` | Extract device info from DICOM files |
-| `rad-device-watch downtime-log` | Log a downtime event |
-| `rad-device-watch downtime-list` | List downtime events |
-| `rad-device-watch uptime` | Compute uptime percentage for a device |
-| `rad-device-watch usage-add` | Record a usage entry |
-| `rad-device-watch usage-report` | Generate a usage summary report |
-| `rad-device-watch alert-add` | Create an alert rule |
-| `rad-device-watch alert-check` | Evaluate all alert rules |
-| `rad-device-watch alert-history` | View triggered alerts |
-| `rad-device-watch export` | Export data to CSV |
-| `rad-device-watch serve` | Launch the Streamlit dashboard |
+| `rad-device-watch init` | Initialize the database schema. |
+| `rad-device-watch device-add` | Register a new device. |
+| `rad-device-watch device-list` | List all devices. |
+| `rad-device-watch device-get <id>` | Show device details. |
+| `rad-device-watch device-delete <id>` | Remove a device. |
+| `rad-device-watch import-cmd` | Import devices, downtime, or usage from CSV/Excel. |
+| `rad-device-watch import-dicom <path>` | Extract device info from DICOM files. |
+| `rad-device-watch downtime-log` | Log a downtime event. |
+| `rad-device-watch downtime-list` | List downtime events. |
+| `rad-device-watch uptime <start> <end>` | Compute uptime percentage for devices. |
+| `rad-device-watch usage-add` | Record a usage entry. |
+| `rad-device-watch usage-report <start> <end>` | Generate a usage summary report. |
+| `rad-device-watch alert-add` | Create an alert rule. |
+| `rad-device-watch alert-check` | Evaluate all alert rules. |
+| `rad-device-watch alert-history` | View triggered alerts. |
+| `rad-device-watch export <output_dir>` | Export data to CSV. |
+| `rad-device-watch serve` | Launch the Streamlit dashboard. |
 
 ## Alert Rules
 
@@ -56,11 +61,22 @@ Rules are evaluated periodically and can trigger on any combination of device an
 
 | Metric | Condition | Description |
 |---|---|---|
-| `downtime_duration` | gt, lt, eq | Total downtime (minutes) in the last 7 days |
-| `uptime_pct` | gt, lt, eq | Uptime percentage in the last 7 days |
-| `usage_volume` | gt, lt, eq | Total procedure count in the last 7 days |
+| `downtime_duration` | `gt`, `lt`, `eq` | Total downtime in minutes in the last 7 days. |
+| `uptime_pct` | `gt`, `lt`, `eq` | Uptime percentage in the last 7 days. |
+| `usage_volume` | `gt`, `lt`, `eq` | Total procedure count in the last 7 days. |
 
-Supported alert channels: `console`, `email` (SMTP with TLS), `slack` (webhook), `webhook` (generic HTTP).
+Supported alert channels: `console`, `email`, `slack`, and `webhook`.
+
+## Demo Media
+
+The README animation is generated from real CLI commands against a synthetic SQLite monitoring database:
+
+```bash
+python -m pip install -e ".[media]"
+python scripts/generate_demo_media.py
+```
+
+See [docs/demo-media.md](docs/demo-media.md) for details.
 
 ## Import Formats
 
@@ -74,12 +90,16 @@ MR1,GE,SIGNA Architect,SN67890,MR,Room 202
 
 ### DICOM
 
-Extracts device module tags (manufacturer, station name, model, serial number, software version, install date) and usage study-level data from single files or directories.
+Extracts device module tags such as manufacturer, station name, model, serial number, software version, and install date from single files or directories.
 
 ### HL7 v2
 
-Parses ORM, ORU, MDM, and ADT messages using hl7apy, extracting device information and procedure data from OBR, OBX, PID, and Z-segments.
+Parses ORM, ORU, MDM, and ADT messages using `hl7apy`, extracting device information and procedure data from OBR, OBX, PID, and Z-segments.
+
+## Safety And Scope
+
+This tool is intended for operations analytics, quality improvement, and workflow prototyping. Validate importer mappings and alert thresholds before using outputs in production workflows.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

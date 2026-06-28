@@ -4,6 +4,8 @@ __pycache__/
 dist/
 build/
 .venv/
+.tmp/
+outputs/
 *.db
 *.csv
 *.html
