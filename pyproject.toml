@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rad-device-watch"
+version = "0.1.0"
+description = "Radiology device monitoring — inventory, uptime/downtime, usage auditing, and alerting."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Abinav Katuru" }]
+keywords = [
+    "radiology",
+    "device-monitoring",
+    "inventory",
+    "uptime",
+    "dicom",
+    "hl7",
+    "healthcare",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Healthcare Industry",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "typer>=0.12",
+    "rich>=13.7",
+    "pydantic>=2.6",
+    "pydicom>=2.4",
+    "httpx>=0.27",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.36", "plotly>=5.20"]
+hl7 = ["hl7apy>=1.3"]
+dicom-net = ["pynetdicom>=2.1"]
+pdf = ["weasyprint>=62", "fpdf2>=2.7"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pandas-stubs",
+    "hl7apy>=1.3",
+    "pynetdicom>=2.1",
+    "streamlit>=1.36",
+    "plotly>=5.20",
+    "types-PyYAML",
+]
+
+[project.scripts]
+rad-device-watch = "rad_device_watch.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/AKaturu/rad-device-watch"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["numpy.*", "pydicom.*", "hl7apy.*", "pynetdicom.*", "streamlit.*", "plotly.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]
