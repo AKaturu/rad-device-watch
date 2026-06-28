@@ -17,7 +17,10 @@ keywords = [
     "uptime",
     "dicom",
     "hl7",
+    "mpps",
+    "alerting",
     "healthcare",
+    "quality-improvement",
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License",
@@ -36,6 +39,7 @@ dependencies = [
     "pydicom>=2.4",
     "httpx>=0.27",
     "jinja2>=3.1",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
