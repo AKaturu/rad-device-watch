@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from rad_device_watch.usage import UsageAnalyzer
 
 
 @pytest.fixture
-def db(tmp_path: Path) -> Database:
+def db(tmp_path: Path) -> Generator[Database, None, None]:
     d = Database(tmp_path / "test.db")
     d.connect()
     d.init_schema()

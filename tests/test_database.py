@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -6,7 +7,7 @@ from rad_device_watch.database import Database
 
 
 @pytest.fixture
-def db(tmp_path: Path) -> Database:
+def db(tmp_path: Path) -> Generator[Database, None, None]:
     d = Database(tmp_path / "test.db")
     d.connect()
     d.init_schema()
@@ -42,6 +43,7 @@ def test_row_to_dict(db: Database):
     db.execute("INSERT INTO devices (name) VALUES (?)", ("MRI1",))
     db.commit()
     row = db.fetchone("SELECT * FROM devices WHERE name = ?", ("MRI1",))
+    assert row is not None
     d = db.row_to_dict(row)
     assert d is not None
     assert d["name"] == "MRI1"
@@ -54,5 +56,6 @@ def test_row_to_dict_none(db: Database):
 def test_commit(db: Database):
     db.execute("INSERT INTO devices (name) VALUES (?)", ("XRAY1",))
     db.commit()
-    count = db.fetchone("SELECT COUNT(*) as cnt FROM devices")["cnt"]
-    assert count == 1
+    row = db.fetchone("SELECT COUNT(*) as cnt FROM devices")
+    assert row is not None
+    assert row["cnt"] == 1

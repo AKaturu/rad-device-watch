@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,7 @@ from rad_device_watch.models import Device, DeviceStatus
 
 
 @pytest.fixture
-def db(tmp_path: Path) -> Database:
+def db(tmp_path: Path) -> Generator[Database, None, None]:
     d = Database(tmp_path / "test.db")
     d.connect()
     d.init_schema()
@@ -81,6 +82,7 @@ def test_update_device(dm: DeviceManager):
     result = dm.update(updated)
     assert result is True
     fetched = dm.get(dev_id)
+    assert fetched is not None
     assert fetched.name == "NewName"
 
 
