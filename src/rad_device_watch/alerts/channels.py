@@ -87,9 +87,10 @@ class WebhookChannel:
             logger.warning("Webhook alert skipped: no url configured")
             return False
         headers = cfg.get("headers", {"Content-Type": "application/json"})
-        payload = cfg.get("payload_template", {"text": message})
+        payload = cfg.get("payload_template", {"text": "{{message}}"})
+        payload_str = json.dumps(payload)
         rendered = json.loads(
-            json.dumps(payload).replace("{{message}}", message)
+            payload_str.replace("{{message}}", json.dumps(message).strip('"'))
         )
         try:
             resp = httpx.post(url, json=rendered, headers=headers, timeout=10)

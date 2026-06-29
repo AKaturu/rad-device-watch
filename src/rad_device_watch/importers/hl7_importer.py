@@ -112,6 +112,11 @@ def extract_usage_from_hl7(raw: str) -> UsageRecord | None:
         return None
 
     date_str = parsed.get("study_date") or "unknown"
+    logger.warning(
+        "Device resolution failed for station '%s' — using device_id=0 placeholder. "
+        "Implement a lookup from station/device name to a known device ID.",
+        station,
+    )
     return UsageRecord(
         device_id=0,
         procedure_date=date_str,

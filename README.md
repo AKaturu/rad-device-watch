@@ -5,6 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
+> **Validation status:** Software functionality has been tested using synthetic data. This project has not undergone clinical validation.
+
 **Radiology device monitoring for inventory, uptime/downtime, usage auditing, and proactive alerting.**
 
 ![rad-device-watch demo](docs/assets/demo.gif)
