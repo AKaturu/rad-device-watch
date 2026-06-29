@@ -5,13 +5,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
-> **Validation status:** Software functionality has been tested using synthetic data. This project has not undergone clinical validation.
-
 **Radiology device monitoring for inventory, uptime/downtime, usage auditing, and proactive alerting.**
 
 ![rad-device-watch demo](docs/assets/demo.gif)
 
 `rad-device-watch` helps radiology teams track imaging-device inventory, monitor availability, audit procedure volumes, and alert when device metrics cross configurable thresholds. It supports manual entry, CSV/Excel import, DICOM file extraction, HL7 v2 message parsing, DICOM MPPS-oriented polling, CSV export, and a Streamlit dashboard.
+
+## Evidence Status
+
+| Evidence | Status |
+|---|---|
+| Unit and integration tests | Complete |
+| Synthetic end-to-end evaluation | Complete |
+| Public-data evaluation | Not completed |
+| Independent expert review | Not completed |
+| Institutional validation | Not completed |
+| Prospective clinical validation | Not completed |
+
+This software is a research prototype and is not intended for independent clinical decision-making.
 
 ## Quick Start
 
