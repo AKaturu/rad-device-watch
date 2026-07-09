@@ -5,6 +5,7 @@ dist/
 build/
 .venv/
 .tmp/
+.pytest-tmp/
 outputs/
 *.db
 *.csv
