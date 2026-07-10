@@ -10,10 +10,12 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import imageio.v2 as imageio
+import numpy as np
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,9 +40,7 @@ def font(size: int, mono: bool = False) -> ImageFont.FreeTypeFont | ImageFont.Im
             "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
             if mono
             else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/Library/Fonts/Menlo.ttc"
-            if mono
-            else "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/Library/Fonts/Menlo.ttc" if mono else "/System/Library/Fonts/Supplemental/Arial.ttf",
         ]
     )
     for candidate in candidates:
@@ -63,7 +63,14 @@ def run_cli(args: list[str], db_path: Path) -> str:
         "--db",
         str(db_path),
     ]
-    env = {**os.environ, "NO_COLOR": "1", "PYTHONUTF8": "1"}
+    env = {
+        **os.environ,
+        "NO_COLOR": "1",
+        "PYTHONUTF8": "1",
+        "PYTHONPATH": os.pathsep.join(
+            part for part in (str(ROOT / "src"), os.environ.get("PYTHONPATH")) if part
+        ),
+    }
     result = subprocess.run(
         command,
         check=True,
@@ -72,11 +79,14 @@ def run_cli(args: list[str], db_path: Path) -> str:
         encoding="utf-8",
         errors="replace",
         env=env,
+        cwd=ROOT,
     )
     return clean(result.stdout)
 
 
-def wrap_line(draw: ImageDraw.ImageDraw, text: str, max_width: int, fnt: ImageFont.ImageFont) -> list[str]:
+def wrap_line(
+    draw: ImageDraw.ImageDraw, text: str, max_width: int, fnt: ImageFont.ImageFont
+) -> list[str]:
     words = text.split()
     if not words:
         return [""]
@@ -110,7 +120,9 @@ def draw_wrapped(
     return y
 
 
-def make_frame(title: str, command: str, body: list[str], stats: list[tuple[str, str]], footer: str) -> Image.Image:
+def make_frame(
+    title: str, command: str, body: list[str], stats: list[tuple[str, str]], footer: str
+) -> Image.Image:
     image = Image.new("RGB", (1280, 720), "#101419")
     draw = ImageDraw.Draw(image)
     title_font = font(42)
@@ -123,13 +135,17 @@ def make_frame(title: str, command: str, body: list[str], stats: list[tuple[str,
     draw.text((40, 24), title, font=title_font, fill="#f8fafc")
     draw.text((40, 675), footer, font=small_font, fill="#a8b3bd")
 
-    draw.rounded_rectangle((40, 130, 780, 630), radius=14, fill="#0b0f14", outline="#314154", width=2)
+    draw.rounded_rectangle(
+        (40, 130, 780, 630), radius=14, fill="#0b0f14", outline="#314154", width=2
+    )
     draw_wrapped(draw, (70, 158), f"$ {command}", 660, body_font, "#bae6fd", 30)
     y = 218
     for line in body:
         y = draw_wrapped(draw, (70, y), line, 660, body_font, "#d9e2ec", 30) + 4
 
-    draw.rounded_rectangle((820, 130, 1240, 630), radius=14, fill="#111827", outline="#344052", width=2)
+    draw.rounded_rectangle(
+        (820, 130, 1240, 630), radius=14, fill="#111827", outline="#344052", width=2
+    )
     draw.text((850, 160), "Monitoring snapshot", font=stat_font, fill="#f8fafc")
     y = 220
     for label, value in stats:
@@ -159,16 +175,99 @@ def run_demo(output: Path) -> dict[str, str]:
     transcripts: dict[str, str] = {}
     transcripts["init"] = run_cli(["init"], db_path)
     device_specs = [
-        ["device-add", "CT Bay 1", "--manufacturer", "Siemens", "--model", "SOMATOM Force", "--serial", "CT-001", "--station", "CTBAY1", "--modality", "CT", "--location", "Room 101", "--department", "Radiology"],
-        ["device-add", "MR Suite 2", "--manufacturer", "GE", "--model", "SIGNA Architect", "--serial", "MR-002", "--station", "MRSUITE2", "--modality", "MR", "--location", "Room 202", "--department", "Radiology"],
-        ["device-add", "XR Room 3", "--manufacturer", "Canon", "--model", "RadPRO", "--serial", "XR-003", "--station", "XRROOM3", "--modality", "XR", "--location", "Room 303", "--department", "Radiology"],
+        [
+            "device-add",
+            "CT Bay 1",
+            "--manufacturer",
+            "Siemens",
+            "--model",
+            "SOMATOM Force",
+            "--serial",
+            "CT-001",
+            "--station",
+            "CTBAY1",
+            "--modality",
+            "CT",
+            "--location",
+            "Room 101",
+            "--department",
+            "Radiology",
+        ],
+        [
+            "device-add",
+            "MR Suite 2",
+            "--manufacturer",
+            "GE",
+            "--model",
+            "SIGNA Architect",
+            "--serial",
+            "MR-002",
+            "--station",
+            "MRSUITE2",
+            "--modality",
+            "MR",
+            "--location",
+            "Room 202",
+            "--department",
+            "Radiology",
+        ],
+        [
+            "device-add",
+            "XR Room 3",
+            "--manufacturer",
+            "Canon",
+            "--model",
+            "RadPRO",
+            "--serial",
+            "XR-003",
+            "--station",
+            "XRROOM3",
+            "--modality",
+            "XR",
+            "--location",
+            "Room 303",
+            "--department",
+            "Radiology",
+        ],
     ]
     for spec in device_specs:
         run_cli(spec, db_path)
     transcripts["devices"] = run_cli(["device-list"], db_path)
 
-    run_cli(["downtime-log", "1", "--start", f"{day_2.isoformat()} 08:00:00", "--end", f"{day_2.isoformat()} 10:30:00", "--cause", "hardware", "--impact", "high", "--detail", "Tube cooling alarm"], db_path)
-    run_cli(["downtime-log", "2", "--start", f"{day_1.isoformat()} 13:00:00", "--end", f"{day_1.isoformat()} 13:45:00", "--cause", "software", "--impact", "low", "--detail", "Protocol workstation reboot"], db_path)
+    run_cli(
+        [
+            "downtime-log",
+            "1",
+            "--start",
+            f"{day_2.isoformat()} 08:00:00",
+            "--end",
+            f"{day_2.isoformat()} 10:30:00",
+            "--cause",
+            "hardware",
+            "--impact",
+            "high",
+            "--detail",
+            "Tube cooling alarm",
+        ],
+        db_path,
+    )
+    run_cli(
+        [
+            "downtime-log",
+            "2",
+            "--start",
+            f"{day_1.isoformat()} 13:00:00",
+            "--end",
+            f"{day_1.isoformat()} 13:45:00",
+            "--cause",
+            "software",
+            "--impact",
+            "low",
+            "--detail",
+            "Protocol workstation reboot",
+        ],
+        db_path,
+    )
     transcripts["downtime"] = run_cli(["downtime-list"], db_path)
     transcripts["uptime"] = run_cli(["uptime", period_start, period_end], db_path)
 
@@ -181,10 +280,34 @@ def run_demo(output: Path) -> dict[str, str]:
         ("3", day_1.isoformat(), "82", "XR"),
     ]
     for device_id, procedure_date, count, modality in usage_rows:
-        run_cli(["usage-add", device_id, "--date", procedure_date, "--count", count, "--modality", modality], db_path)
+        run_cli(
+            [
+                "usage-add",
+                device_id,
+                "--date",
+                procedure_date,
+                "--count",
+                count,
+                "--modality",
+                modality,
+            ],
+            db_path,
+        )
     transcripts["usage"] = run_cli(["usage-report", period_start, period_end], db_path)
 
-    run_cli(["alert-add", "High weekly usage", "--metric", "usage_volume", "--condition", "gt", "--threshold", "75"], db_path)
+    run_cli(
+        [
+            "alert-add",
+            "High weekly usage",
+            "--metric",
+            "usage_volume",
+            "--condition",
+            "gt",
+            "--threshold",
+            "75",
+        ],
+        db_path,
+    )
     transcripts["alerts"] = run_cli(["alert-check"], db_path)
     transcripts["export"] = run_cli(["export", str(export_dir)], db_path)
     return transcripts
@@ -197,11 +320,15 @@ def csv_summary(output: Path) -> dict[str, list[str]]:
 
     device_lines = [
         f"{row.name}: {row.manufacturer} {row.model} ({row.modality}) - {row.location}"
-        for row in devices[["name", "manufacturer", "model", "modality", "location"]].itertuples(index=False)
+        for row in devices[["name", "manufacturer", "model", "modality", "location"]].itertuples(
+            index=False
+        )
     ]
     downtime_lines = [
         f"Device {int(row.device_id)}: {int(row.duration_minutes)} min {row.cause_category} downtime ({row.impact_level})"
-        for row in downtime[["device_id", "duration_minutes", "cause_category", "impact_level"]].itertuples(index=False)
+        for row in downtime[
+            ["device_id", "duration_minutes", "cause_category", "impact_level"]
+        ].itertuples(index=False)
     ]
     usage_totals = usage.groupby("modality", as_index=False)["procedure_count"].sum()
     usage_lines = [
@@ -256,9 +383,7 @@ def main() -> None:
         make_frame(
             "Usage auditing and alerts",
             "rad-device-watch usage-report && alert-check",
-            summaries["usage"]
-            + [""]
-            + transcripts.get("alerts", "").splitlines()[:2],
+            summaries["usage"] + [""] + transcripts.get("alerts", "").splitlines()[:2],
             stats,
             "Inventory, uptime, usage, alerts, and CSV export are exercised in one run.",
         ),
@@ -268,8 +393,15 @@ def main() -> None:
     gif = args.assets / "demo.gif"
     mp4 = args.assets / "demo.mp4"
     frames[0].save(poster)
-    frames[0].save(gif, save_all=True, append_images=frames[1:], duration=1600, loop=0)
-    imageio.mimsave(mp4, frames, fps=1)
+    # Hold each real CLI-derived scene long enough to read, then encode the same
+    # three-step sequence as the full browser-playable walkthrough.
+    frames[0].save(gif, save_all=True, append_images=frames[1:], duration=3000, loop=0)
+    with imageio.get_writer(
+        mp4, fps=6, codec="libx264", quality=8, macro_block_size=None
+    ) as writer:
+        for frame in frames:
+            for _ in range(18):
+                writer.append_data(np.asarray(frame))
     print(f"Wrote {poster}")
     print(f"Wrote {gif}")
     print(f"Wrote {mp4}")

@@ -7,7 +7,9 @@
 
 **Radiology device monitoring for inventory, uptime/downtime, usage auditing, and proactive alerting.**
 
-![rad-device-watch demo](docs/assets/demo.gif)
+[![rad-device-watch demo](docs/assets/demo.gif)](https://cdn.jsdelivr.net/gh/AKaturu/rad-device-watch@main/docs/assets/demo.mp4)
+
+[Play the full demo video](https://cdn.jsdelivr.net/gh/AKaturu/rad-device-watch@main/docs/assets/demo.mp4)
 
 `rad-device-watch` helps radiology teams track imaging-device inventory, monitor availability, audit procedure volumes, and alert when device metrics cross configurable thresholds. It supports manual entry, CSV/Excel import, DICOM file extraction, HL7 v2 message parsing, DICOM MPPS-oriented polling, CSV export, and a Streamlit dashboard.
 
