@@ -13,4 +13,6 @@ Generated assets:
 - `docs/assets/demo.gif`
 - `docs/assets/demo.mp4`
 
+The GIF presents the three CLI-derived workflow scenes inline in GitHub. The linked MP4 holds each scene for three seconds for browser playback.
+
 The generated device records, downtime events, usage records, and alerts are synthetic examples for demonstration.
