@@ -23,9 +23,11 @@ class DowntimeTracker:
         self.db = db
 
     def log_event(self, event: DowntimeEvent) -> int:
-        if event.start_time and event.end_time:
-            start = _parse_dt(event.start_time)
+        start = _parse_dt(event.start_time)
+        if event.end_time:
             end = _parse_dt(event.end_time)
+            if end < start:
+                raise ValueError("Downtime end_time cannot precede start_time")
             event.duration_minutes = (end - start).total_seconds() / 60.0
         cur = self.db.execute(
             """INSERT INTO downtime_events (device_id, start_time, end_time,
@@ -87,17 +89,27 @@ class DowntimeTracker:
     ) -> UptimeReport:
         start_dt = _parse_dt(period_start)
         end_dt = _parse_dt(period_end)
+        if end_dt <= start_dt:
+            raise ValueError("period_end must be later than period_start")
         total_minutes = (end_dt - start_dt).total_seconds() / 60.0
 
-        row = self.db.fetchone(
-            """SELECT COALESCE(SUM(duration_minutes), 0) as total_downtime
+        rows = self.db.fetchall(
+            """SELECT start_time, end_time
                FROM downtime_events
                WHERE device_id = ?
-                 AND start_time >= ?
-                 AND (end_time <= ? OR end_time IS NULL)""",
-            (device_id, period_start, period_end),
+               ORDER BY start_time""",
+            (device_id,),
         )
-        downtime_minutes = row["total_downtime"] if row else 0.0
+        intervals: list[tuple[datetime, datetime]] = []
+        for row in rows:
+            event_start = _parse_dt(row["start_time"])
+            event_end = _parse_dt(row["end_time"]) if row["end_time"] else end_dt
+            clipped_start = max(event_start, start_dt)
+            clipped_end = min(event_end, end_dt)
+            if clipped_end > clipped_start:
+                intervals.append((clipped_start, clipped_end))
+
+        downtime_minutes = _merged_duration_minutes(intervals)
         uptime_minutes = max(total_minutes - downtime_minutes, 0)
         uptime_pct = (uptime_minutes / total_minutes * 100) if total_minutes > 0 else 100.0
 
@@ -128,3 +140,17 @@ class DowntimeTracker:
             report = self.compute_uptime(dr["id"], period_start, period_end)
             reports.append(report)
         return reports
+
+
+def _merged_duration_minutes(intervals: list[tuple[datetime, datetime]]) -> float:
+    if not intervals:
+        return 0.0
+    ordered = sorted(intervals)
+    merged: list[tuple[datetime, datetime]] = [ordered[0]]
+    for start, end in ordered[1:]:
+        previous_start, previous_end = merged[-1]
+        if start <= previous_end:
+            merged[-1] = previous_start, max(previous_end, end)
+        else:
+            merged.append((start, end))
+    return sum((end - start).total_seconds() / 60.0 for start, end in merged)

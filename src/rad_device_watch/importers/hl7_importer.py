@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,7 @@ def parse_hl7_message(raw: str) -> dict | None:
         if name == "OBR":
             result["station_name"] = _get_field(segment, 15)
             result["modality"] = _get_field(segment, 24)
+            result["study_date"] = _get_date(_get_field(segment, 7))
             if not result["device_name"]:
                 result["device_name"] = _get_field(segment, 18)
 
@@ -102,7 +104,12 @@ def extract_device_from_hl7(raw: str) -> Device | None:
     )
 
 
-def extract_usage_from_hl7(raw: str) -> UsageRecord | None:
+def extract_usage_from_hl7(
+    raw: str,
+    *,
+    resolve_device_id: Callable[[str], int | None] | None = None,
+) -> UsageRecord | None:
+    """Create usage only when the source station resolves to a real device."""
     parsed = parse_hl7_message(raw)
     if not parsed:
         return None
@@ -111,14 +118,24 @@ def extract_usage_from_hl7(raw: str) -> UsageRecord | None:
     if not station:
         return None
 
-    date_str = parsed.get("study_date") or "unknown"
-    logger.warning(
-        "Device resolution failed for station '%s' — using device_id=0 placeholder. "
-        "Implement a lookup from station/device name to a known device ID.",
-        station,
-    )
+    if resolve_device_id is None:
+        logger.warning("HL7 usage skipped for station '%s': no device resolver configured", station)
+        return None
+    try:
+        device_id = resolve_device_id(station)
+    except Exception as exc:
+        logger.warning("HL7 device resolution failed for station '%s': %s", station, exc)
+        return None
+    if device_id is None or device_id <= 0:
+        logger.warning("HL7 usage skipped for unresolved station '%s'", station)
+        return None
+
+    date_str = parsed.get("study_date")
+    if not date_str:
+        logger.warning("HL7 usage skipped for station '%s': study date is missing", station)
+        return None
     return UsageRecord(
-        device_id=0,
+        device_id=device_id,
         procedure_date=date_str,
         procedure_count=1,
         modality=parsed.get("modality"),

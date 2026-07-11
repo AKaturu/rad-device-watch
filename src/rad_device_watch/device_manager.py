@@ -53,6 +53,26 @@ class DeviceManager:
         )
         return Device(**d) if d else None
 
+    def resolve_id(self, identifier: str) -> int | None:
+        """Resolve a station, device name, or serial number to a device ID."""
+        value = identifier.strip()
+        if not value:
+            return None
+        row = self.db.fetchone(
+            """SELECT id FROM devices
+               WHERE lower(coalesce(station_name, '')) = lower(?)
+                  OR lower(name) = lower(?)
+                  OR lower(coalesce(serial_number, '')) = lower(?)
+               ORDER BY CASE
+                   WHEN lower(coalesce(station_name, '')) = lower(?) THEN 0
+                   WHEN lower(name) = lower(?) THEN 1
+                   ELSE 2
+               END, id
+               LIMIT 1""",
+            (value, value, value, value, value),
+        )
+        return int(row["id"]) if row else None
+
     def list_all(self) -> list[Device]:
         rows = self.db.fetchall("SELECT * FROM devices ORDER BY name")
         return [Device(**self.db.row_to_dict(r)) for r in rows]

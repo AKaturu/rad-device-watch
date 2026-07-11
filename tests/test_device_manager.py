@@ -96,6 +96,17 @@ def test_delete_nonexistent(dm: DeviceManager):
     assert dm.delete(9999) is False
 
 
+def test_resolve_id_matches_integration_identifiers(dm: DeviceManager):
+    device_id = dm.add(
+        Device(name="CT Console", station_name="CT_ROOM_1", serial_number="SN1")
+    )
+
+    assert dm.resolve_id("ct_room_1") == device_id
+    assert dm.resolve_id("CT CONSOLE") == device_id
+    assert dm.resolve_id("sn1") == device_id
+    assert dm.resolve_id("unknown") is None
+
+
 def test_count(dm: DeviceManager):
     dm.add(Device(name="A"))
     dm.add(Device(name="B"))
