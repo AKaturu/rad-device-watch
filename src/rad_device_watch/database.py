@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import sqlite3
 from pathlib import Path
 
@@ -84,6 +86,9 @@ CREATE TABLE IF NOT EXISTS alert_history (
 );
 """
 
+logger = logging.getLogger(__name__)
+_SMTP_PASSWORD_ENV = "RAD_DEVICE_WATCH_SMTP_PASSWORD"
+
 
 class Database:
     def __init__(self, path: str | Path = "rad_device_watch.db"):
@@ -111,6 +116,7 @@ class Database:
     def init_schema(self) -> None:
         conn = self.connect()
         conn.executescript(_SCHEMA_SQL)
+        _redact_plaintext_smtp_passwords(conn)
         conn.commit()
 
     def execute(self, sql: str, params=()):
@@ -122,6 +128,10 @@ class Database:
     def commit(self) -> None:
         if self._conn is not None:
             self._conn.commit()
+
+    def rollback(self) -> None:
+        if self._conn is not None:
+            self._conn.rollback()
 
     def fetchone(self, sql: str, params=()) -> sqlite3.Row | None:
         return self.connect().execute(sql, params).fetchone()
@@ -146,3 +156,28 @@ class Database:
 
     def __exit__(self, *args):
         self.close()
+
+
+def _redact_plaintext_smtp_passwords(conn: sqlite3.Connection) -> None:
+    rows = conn.execute(
+        """SELECT id, channel_config FROM alert_rules
+           WHERE channel = 'email' AND channel_config IS NOT NULL"""
+    ).fetchall()
+    for row in rows:
+        try:
+            config = json.loads(row["channel_config"])
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if not isinstance(config, dict) or "password" not in config:
+            continue
+        config.pop("password", None)
+        config.setdefault("password_env", _SMTP_PASSWORD_ENV)
+        conn.execute(
+            "UPDATE alert_rules SET channel_config = ? WHERE id = ?",
+            (json.dumps(config, sort_keys=True), row["id"]),
+        )
+        logger.warning(
+            "Removed a plaintext SMTP password from alert rule %s; configure %s instead",
+            row["id"],
+            config["password_env"],
+        )

@@ -17,6 +17,7 @@ class AlertEngine:
         self.db = db
 
     def add_rule(self, rule: AlertRule) -> int:
+        channel_config = _validate_channel_config(rule)
         cur = self.db.execute(
             """INSERT INTO alert_rules (name, metric, condition, threshold, channel, channel_config, enabled)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -26,7 +27,7 @@ class AlertEngine:
                 rule.condition.value,
                 rule.threshold,
                 rule.channel.value,
-                rule.channel_config,
+                channel_config,
                 1 if rule.enabled else 0,
             ),
         )
@@ -107,48 +108,51 @@ class AlertEngine:
         devices = self.db.fetchall("SELECT id, name FROM devices")
         triggered: list[AlertHistory] = []
 
-        for rule in rules:
-            channel_config = None
-            if rule.channel_config:
-                with contextlib.suppress(json.JSONDecodeError):
-                    channel_config = json.loads(rule.channel_config)
+        try:
+            for rule in rules:
+                channel_config = None
+                if rule.channel_config:
+                    with contextlib.suppress(json.JSONDecodeError):
+                        channel_config = json.loads(rule.channel_config)
 
-            channel = get_channel(rule.channel.value)
+                channel = get_channel(rule.channel.value)
 
-            for dev in devices:
-                metric = AlertMetric(rule.metric.value)
-                value = self._get_metric_value(metric, dev["id"])
+                for dev in devices:
+                    metric = AlertMetric(rule.metric.value)
+                    value = self._get_metric_value(metric, dev["id"])
 
-                if self._evaluate(
-                    value, rule.condition.value, rule.threshold
-                ):
-                    message = (
-                        f"[{rule.name}] Device '{dev['name']}' triggered: "
-                        f"{rule.metric.value} = {value} "
-                        f"({rule.condition.value} {rule.threshold})"
-                    )
+                    if self._evaluate(value, rule.condition.value, rule.threshold):
+                        message = (
+                            f"[{rule.name}] Device '{dev['name']}' triggered: "
+                            f"{rule.metric.value} = {value} "
+                            f"({rule.condition.value} {rule.threshold})"
+                        )
 
-                    channel.send(message, config=channel_config)
+                        channel.send(message, config=channel_config)
 
-                    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    cur = self.db.execute(
-                        """INSERT INTO alert_history (alert_rule_id, device_id,
-                           triggered_at, message, channel)
-                           VALUES (?, ?, ?, ?, ?)""",
-                        (rule.id, dev["id"], now_str, message, rule.channel.value),
-                    )
-                    ah = AlertHistory(
-                        id=cur.lastrowid,
-                        alert_rule_id=rule.id,
-                        device_id=dev["id"],
-                        triggered_at=now_str,
-                        message=message,
-                        channel=rule.channel.value,
-                    )
-                    triggered.append(ah)
+                        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        cur = self.db.execute(
+                            """INSERT INTO alert_history (alert_rule_id, device_id,
+                               triggered_at, message, channel)
+                               VALUES (?, ?, ?, ?, ?)""",
+                            (rule.id, dev["id"], now_str, message, rule.channel.value),
+                        )
+                        triggered.append(
+                            AlertHistory(
+                                id=cur.lastrowid,
+                                alert_rule_id=rule.id,
+                                device_id=dev["id"],
+                                triggered_at=now_str,
+                                message=message,
+                                channel=rule.channel.value,
+                            )
+                        )
 
             if triggered:
                 self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
         return triggered
 
@@ -166,3 +170,19 @@ class AlertEngine:
                 (limit,),
             )
         return [AlertHistory(**self.db.row_to_dict(r)) for r in rows]
+
+
+def _validate_channel_config(rule: AlertRule) -> str | None:
+    if not rule.channel_config:
+        return None
+    try:
+        config = json.loads(rule.channel_config)
+    except json.JSONDecodeError as exc:
+        raise ValueError("channel_config must be valid JSON") from exc
+    if not isinstance(config, dict):
+        raise ValueError("channel_config must be a JSON object")
+    if rule.channel.value == "email" and "password" in config:
+        raise ValueError(
+            "SMTP passwords cannot be stored in channel_config; use password_env"
+        )
+    return json.dumps(config, sort_keys=True)

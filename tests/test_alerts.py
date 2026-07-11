@@ -1,8 +1,11 @@
+import json
 from collections.abc import Generator
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
+import rad_device_watch.alerts.engine as engine_module
 from rad_device_watch.alerts.channels import (
     ConsoleChannel,
     get_channel,
@@ -155,3 +158,68 @@ def test_poll_with_rules(engine: AlertEngine, db: Database):
     triggered = engine.poll()
     assert len(triggered) >= 1
     assert triggered[0].alert_rule_id is not None
+
+
+def test_add_rule_rejects_plaintext_smtp_password(engine: AlertEngine):
+    with pytest.raises(ValueError, match="password_env"):
+        engine.add_rule(
+            AlertRule(
+                name="Email",
+                metric=AlertMetric.usage_volume,
+                condition=AlertCondition.gt,
+                threshold=1,
+                channel=AlertChannel.email,
+                channel_config=json.dumps({"password": "do-not-store"}),
+            )
+        )
+
+
+def test_poll_commits_once_for_multiple_alerts(
+    engine: AlertEngine, db: Database, monkeypatch
+):
+    DeviceManager(db).add(Device(name="CT1"))
+    for name in ("Rule 1", "Rule 2"):
+        engine.add_rule(
+            AlertRule(
+                name=name,
+                metric=AlertMetric.usage_volume,
+                condition=AlertCondition.gt,
+                threshold=-1,
+            )
+        )
+    channel = MagicMock()
+    channel.send.return_value = True
+    monkeypatch.setattr(engine_module, "get_channel", lambda _name: channel)
+    commit = MagicMock(wraps=db.commit)
+    monkeypatch.setattr(db, "commit", commit)
+
+    triggered = engine.poll()
+
+    assert len(triggered) == 2
+    commit.assert_called_once_with()
+
+
+def test_poll_rolls_back_all_history_when_delivery_raises(
+    engine: AlertEngine, db: Database, monkeypatch
+):
+    manager = DeviceManager(db)
+    manager.add(Device(name="CT1"))
+    manager.add(Device(name="CT2"))
+    engine.add_rule(
+        AlertRule(
+            name="Always",
+            metric=AlertMetric.usage_volume,
+            condition=AlertCondition.gt,
+            threshold=-1,
+        )
+    )
+    channel = MagicMock()
+    channel.send.side_effect = [True, RuntimeError("delivery failed")]
+    monkeypatch.setattr(engine_module, "get_channel", lambda _name: channel)
+
+    with pytest.raises(RuntimeError, match="delivery failed"):
+        engine.poll()
+
+    row = db.fetchone("SELECT COUNT(*) AS count FROM alert_history")
+    assert row is not None
+    assert row["count"] == 0
