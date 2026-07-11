@@ -66,9 +66,7 @@ def test_maintenance_commands_cover_full_lifecycle(tmp_path: Path) -> None:
         "Service Co",
     )
     listed = _invoke(db_path, "maintenance-list", "--pending")
-    completed = _invoke(
-        db_path, "maintenance-complete", "1", "--date", "2026-02-02"
-    )
+    completed = _invoke(db_path, "maintenance-complete", "1", "--date", "2026-02-02")
     deleted = _invoke(db_path, "maintenance-delete", "1")
 
     assert added.exit_code == 0, added.output
@@ -118,7 +116,9 @@ def test_alert_acknowledge_and_delete_commands(tmp_path: Path) -> None:
         assert history["acknowledged"] == 1
         assert history["acknowledged_at"]
         assert db.fetchone("SELECT id FROM alert_rules WHERE id = 1") is None
-        retained = db.fetchone("SELECT alert_rule_id FROM alert_history WHERE id = ?", (history_id,))
+        retained = db.fetchone(
+            "SELECT alert_rule_id FROM alert_history WHERE id = ?", (history_id,)
+        )
         assert retained is not None
         assert retained["alert_rule_id"] is None
 

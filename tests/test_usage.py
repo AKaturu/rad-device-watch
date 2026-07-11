@@ -34,12 +34,8 @@ def test_add_records(analyzer: UsageAnalyzer, dev_id: int):
 
 
 def test_list_records(analyzer: UsageAnalyzer, dev_id: int):
-    analyzer.add_record(
-        UsageRecord(device_id=dev_id, procedure_date="2026-01-01")
-    )
-    analyzer.add_record(
-        UsageRecord(device_id=dev_id, procedure_date="2026-01-02")
-    )
+    analyzer.add_record(UsageRecord(device_id=dev_id, procedure_date="2026-01-01"))
+    analyzer.add_record(UsageRecord(device_id=dev_id, procedure_date="2026-01-02"))
     records = analyzer.list_records(device_id=dev_id)
     assert len(records) == 2
 

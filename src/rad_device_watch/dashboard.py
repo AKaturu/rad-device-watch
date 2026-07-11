@@ -106,9 +106,7 @@ with tab_devices:
             extracted = extract_devices_from_directory(dicom_dir)
             added = 0
             for d in extracted:
-                existing = (
-                    dm.get_by_serial(d.serial_number) if d.serial_number else None
-                )
+                existing = dm.get_by_serial(d.serial_number) if d.serial_number else None
                 if not existing:
                     dm.add(d)
                     added += 1

@@ -46,7 +46,9 @@ class EmailChannel:
             logger.warning("Email alert skipped: no recipients configured")
             return False
         if username and not password:
-            logger.warning("Email alert skipped: SMTP password environment variable %s is unset", password_env)
+            logger.warning(
+                "Email alert skipped: SMTP password environment variable %s is unset", password_env
+            )
             return False
 
         msg = EmailMessage()

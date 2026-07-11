@@ -163,9 +163,7 @@ def test_add_rule_rejects_plaintext_smtp_password(engine: AlertEngine):
         )
 
 
-def test_poll_commits_once_for_multiple_alerts(
-    engine: AlertEngine, db: Database, monkeypatch
-):
+def test_poll_commits_once_for_multiple_alerts(engine: AlertEngine, db: Database, monkeypatch):
     DeviceManager(db).add(Device(name="CT1"))
     for name in ("Rule 1", "Rule 2"):
         engine.add_rule(

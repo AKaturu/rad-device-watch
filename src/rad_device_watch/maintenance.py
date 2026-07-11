@@ -66,8 +66,6 @@ class MaintenanceManager:
         return cursor.rowcount > 0
 
     def delete(self, record_id: int) -> bool:
-        cursor = self.db.execute(
-            "DELETE FROM maintenance_records WHERE id = ?", (record_id,)
-        )
+        cursor = self.db.execute("DELETE FROM maintenance_records WHERE id = ?", (record_id,))
         self.db.commit()
         return cursor.rowcount > 0

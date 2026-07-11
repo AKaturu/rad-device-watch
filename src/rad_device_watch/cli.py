@@ -60,9 +60,7 @@ def _get_db(db_path: str | None) -> Database:
 
 @app.command()
 def init(
-    db_path: str = typer.Option(
-        _DEFAULT_DB, "--db", help="Path to SQLite database file"
-    ),
+    db_path: str = typer.Option(_DEFAULT_DB, "--db", help="Path to SQLite database file"),
 ):
     """Initialize a new rad-device-watch database."""
     db = _get_db(db_path)
@@ -215,15 +213,11 @@ def device_delete(
 
 @app.command()
 def import_cmd(
-    devices: str | None = typer.Option(
-        None, "--devices", help="CSV/Excel file for device import"
-    ),
+    devices: str | None = typer.Option(None, "--devices", help="CSV/Excel file for device import"),
     downtime: str | None = typer.Option(
         None, "--downtime", help="CSV/Excel file for downtime import"
     ),
-    usage: str | None = typer.Option(
-        None, "--usage", help="CSV/Excel file for usage import"
-    ),
+    usage: str | None = typer.Option(None, "--usage", help="CSV/Excel file for usage import"),
     db_path: str | None = typer.Option(None, "--db"),
 ):
     """Import data from CSV/Excel files."""
@@ -357,6 +351,7 @@ def downtime_list(
         console.print("[yellow]No downtime events found.[/yellow]")
     else:
         from rich.table import Table
+
         table = Table(title=f"Downtime Events ({len(events)})")
         table.add_column("ID", style="cyan")
         table.add_column("Device ID")
@@ -404,9 +399,7 @@ def uptime(
     period_start: str = typer.Argument(
         ..., help="Period start (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)"
     ),
-    period_end: str = typer.Argument(
-        ..., help="Period end"
-    ),
+    period_end: str = typer.Argument(..., help="Period end"),
     device_id: int | None = typer.Option(None, "--device", "-d"),
     db_path: str | None = typer.Option(None, "--db"),
 ):
@@ -526,9 +519,7 @@ def maintenance_list(
     from rich.table import Table
 
     db = _get_db(db_path)
-    records = MaintenanceManager(db).list_records(
-        device_id=device_id, pending_only=pending
-    )
+    records = MaintenanceManager(db).list_records(device_id=device_id, pending_only=pending)
     db.close()
 
     table = Table(title=f"Maintenance Records ({len(records)})")
@@ -588,9 +579,7 @@ def alert_add(
     metric: str = typer.Option(
         ..., "--metric", "-m", help="Metric: downtime_duration, uptime_pct, usage_volume"
     ),
-    condition: str = typer.Option(
-        ..., "--condition", "-c", help="Condition: gt, lt, eq"
-    ),
+    condition: str = typer.Option(..., "--condition", "-c", help="Condition: gt, lt, eq"),
     threshold: float = typer.Option(..., "--threshold", "-t", help="Threshold value"),
     channel: str = typer.Option(
         "console", "--channel", help="Channel: console, email, slack, webhook"
@@ -702,9 +691,7 @@ def alert_delete(
 
 @app.command()
 def export(
-    output_dir: str = typer.Argument(
-        ".", help="Output directory for CSV files"
-    ),
+    output_dir: str = typer.Argument(".", help="Output directory for CSV files"),
     device: bool = typer.Option(True, "--device/--no-device"),
     downtime: bool = typer.Option(True, "--downtime/--no-downtime"),
     usage: bool = typer.Option(True, "--usage/--no-usage"),

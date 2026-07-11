@@ -31,9 +31,7 @@ def test_log_event(tracker: DowntimeTracker, dev_id: int):
 
 
 def test_get_event(tracker: DowntimeTracker, dev_id: int):
-    eid = tracker.log_event(
-        DowntimeEvent(device_id=dev_id, start_time="2026-01-01 12:00:00")
-    )
+    eid = tracker.log_event(DowntimeEvent(device_id=dev_id, start_time="2026-01-01 12:00:00"))
     event = tracker.get_event(eid)
     assert event is not None
     assert event.device_id == dev_id
@@ -48,7 +46,7 @@ def test_list_events(tracker: DowntimeTracker, dev_id: int):
         tracker.log_event(
             DowntimeEvent(
                 device_id=dev_id,
-                start_time=f"2026-01-0{i+1} 08:00:00",
+                start_time=f"2026-01-0{i + 1} 08:00:00",
             )
         )
     events = tracker.list_events(device_id=dev_id, limit=10)
@@ -56,9 +54,7 @@ def test_list_events(tracker: DowntimeTracker, dev_id: int):
 
 
 def test_delete_event(tracker: DowntimeTracker, dev_id: int):
-    eid = tracker.log_event(
-        DowntimeEvent(device_id=dev_id, start_time="2026-01-01 08:00:00")
-    )
+    eid = tracker.log_event(DowntimeEvent(device_id=dev_id, start_time="2026-01-01 08:00:00"))
     assert tracker.delete_event(eid) is True
     assert tracker.get_event(eid) is None
 
@@ -95,16 +91,12 @@ def test_compute_uptime_merges_overlapping_events(tracker: DowntimeTracker, dev_
         )
     )
 
-    report = tracker.compute_uptime(
-        dev_id, "2026-01-01 00:00:00", "2026-01-02 00:00:00"
-    )
+    report = tracker.compute_uptime(dev_id, "2026-01-01 00:00:00", "2026-01-02 00:00:00")
 
     assert report.downtime_minutes == 180.0
 
 
-def test_compute_uptime_clips_period_and_counts_open_event(
-    tracker: DowntimeTracker, dev_id: int
-):
+def test_compute_uptime_clips_period_and_counts_open_event(tracker: DowntimeTracker, dev_id: int):
     tracker.log_event(
         DowntimeEvent(
             device_id=dev_id,
@@ -112,13 +104,9 @@ def test_compute_uptime_clips_period_and_counts_open_event(
             end_time="2026-01-01 01:00:00",
         )
     )
-    tracker.log_event(
-        DowntimeEvent(device_id=dev_id, start_time="2026-01-01 12:00:00")
-    )
+    tracker.log_event(DowntimeEvent(device_id=dev_id, start_time="2026-01-01 12:00:00"))
 
-    report = tracker.compute_uptime(
-        dev_id, "2026-01-01 00:00:00", "2026-01-02 00:00:00"
-    )
+    report = tracker.compute_uptime(dev_id, "2026-01-01 00:00:00", "2026-01-02 00:00:00")
 
     assert report.downtime_minutes == 780.0
 

@@ -41,9 +41,7 @@ def parse_hl7_message(raw: str) -> dict | None:
     try:
         from hl7apy.parser import parse_message
     except ImportError:
-        logger.error(
-            "hl7apy is required for HL7 import. Install with: pip install hl7apy"
-        )
+        logger.error("hl7apy is required for HL7 import. Install with: pip install hl7apy")
         return None
 
     try:

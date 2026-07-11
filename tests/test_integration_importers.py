@@ -20,9 +20,7 @@ def test_hl7_usage_requires_resolved_device(monkeypatch) -> None:
 
     assert hl7_importer.extract_usage_from_hl7("message") is None
     assert (
-        hl7_importer.extract_usage_from_hl7(
-            "message", resolve_device_id=lambda _station: None
-        )
+        hl7_importer.extract_usage_from_hl7("message", resolve_device_id=lambda _station: None)
         is None
     )
 
@@ -50,16 +48,11 @@ def _mpps_dataset() -> SimpleNamespace:
 
 def test_mpps_usage_requires_resolved_device() -> None:
     assert MppsPoller()._usage_record(_mpps_dataset()) is None
-    assert (
-        MppsPoller(device_resolver=lambda _station: None)._usage_record(_mpps_dataset())
-        is None
-    )
+    assert MppsPoller(device_resolver=lambda _station: None)._usage_record(_mpps_dataset()) is None
 
 
 def test_mpps_usage_uses_resolved_device_id() -> None:
-    poller = MppsPoller(
-        device_resolver=lambda station: 23 if station == "MR_ROOM_2" else None
-    )
+    poller = MppsPoller(device_resolver=lambda station: 23 if station == "MR_ROOM_2" else None)
 
     record = poller._usage_record(_mpps_dataset())
 

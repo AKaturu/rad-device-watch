@@ -145,8 +145,7 @@ def generate_report_text(
         lines.append("Usage:")
         for s in usage:
             lines.append(
-                f"  {s.device_name}: {s.procedure_count} procedures, "
-                f"{s.avg_daily_volume}/day avg"
+                f"  {s.device_name}: {s.procedure_count} procedures, {s.avg_daily_volume}/day avg"
             )
         lines.append("")
 

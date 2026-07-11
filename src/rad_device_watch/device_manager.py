@@ -47,9 +47,7 @@ class DeviceManager:
 
     def get_by_serial(self, serial: str) -> Device | None:
         d = self.db.row_to_dict_or_none(
-            self.db.fetchone(
-                "SELECT * FROM devices WHERE serial_number = ?", (serial,)
-            )
+            self.db.fetchone("SELECT * FROM devices WHERE serial_number = ?", (serial,))
         )
         return Device(**d) if d else None
 

@@ -49,9 +49,7 @@ class DowntimeTracker:
 
     def get_event(self, event_id: int) -> DowntimeEvent | None:
         d = self.db.row_to_dict_or_none(
-            self.db.fetchone(
-                "SELECT * FROM downtime_events WHERE id = ?", (event_id,)
-            )
+            self.db.fetchone("SELECT * FROM downtime_events WHERE id = ?", (event_id,))
         )
         return DowntimeEvent(**d) if d else None
 
@@ -72,12 +70,8 @@ class DowntimeTracker:
             )
         return [DowntimeEvent(**self.db.row_to_dict(r)) for r in rows]
 
-
-
     def delete_event(self, event_id: int) -> bool:
-        cur = self.db.execute(
-            "DELETE FROM downtime_events WHERE id = ?", (event_id,)
-        )
+        cur = self.db.execute("DELETE FROM downtime_events WHERE id = ?", (event_id,))
         self.db.commit()
         return cur.rowcount > 0
 
@@ -113,9 +107,7 @@ class DowntimeTracker:
         uptime_minutes = max(total_minutes - downtime_minutes, 0)
         uptime_pct = (uptime_minutes / total_minutes * 100) if total_minutes > 0 else 100.0
 
-        dev_row = self.db.fetchone(
-            "SELECT name FROM devices WHERE id = ?", (device_id,)
-        )
+        dev_row = self.db.fetchone("SELECT name FROM devices WHERE id = ?", (device_id,))
         device_name = dev_row["name"] if dev_row else "Unknown"
 
         return UptimeReport(

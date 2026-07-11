@@ -36,18 +36,14 @@ class AlertEngine:
 
     def list_rules(self, enabled_only: bool = False) -> list[AlertRule]:
         if enabled_only:
-            rows = self.db.fetchall(
-                "SELECT * FROM alert_rules WHERE enabled = 1 ORDER BY name"
-            )
+            rows = self.db.fetchall("SELECT * FROM alert_rules WHERE enabled = 1 ORDER BY name")
         else:
             rows = self.db.fetchall("SELECT * FROM alert_rules ORDER BY name")
         return [AlertRule(**self.db.row_to_dict(r)) for r in rows]
 
     def get_rule(self, rule_id: int) -> AlertRule | None:
         d = self.db.row_to_dict_or_none(
-            self.db.fetchone(
-                "SELECT * FROM alert_rules WHERE id = ?", (rule_id,)
-            )
+            self.db.fetchone("SELECT * FROM alert_rules WHERE id = ?", (rule_id,))
         )
         return AlertRule(**d) if d else None
 
@@ -57,18 +53,14 @@ class AlertEngine:
                 "UPDATE alert_history SET alert_rule_id = NULL WHERE alert_rule_id = ?",
                 (rule_id,),
             )
-            cursor = self.db.execute(
-                "DELETE FROM alert_rules WHERE id = ?", (rule_id,)
-            )
+            cursor = self.db.execute("DELETE FROM alert_rules WHERE id = ?", (rule_id,))
             self.db.commit()
             return cursor.rowcount > 0
         except Exception:
             self.db.rollback()
             raise
 
-    def _get_metric_value(
-        self, metric: AlertMetric, device_id: int
-    ) -> float:
+    def _get_metric_value(self, metric: AlertMetric, device_id: int) -> float:
         now = datetime.now()
         if metric == AlertMetric.downtime_duration:
             week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
@@ -164,9 +156,7 @@ class AlertEngine:
 
         return triggered
 
-    def get_history(
-        self, limit: int = 50, device_id: int | None = None
-    ) -> list[AlertHistory]:
+    def get_history(self, limit: int = 50, device_id: int | None = None) -> list[AlertHistory]:
         if device_id:
             rows = self.db.fetchall(
                 "SELECT * FROM alert_history WHERE device_id = ? ORDER BY triggered_at DESC LIMIT ?",
@@ -201,7 +191,5 @@ def _validate_channel_config(rule: AlertRule) -> str | None:
     if not isinstance(config, dict):
         raise ValueError("channel_config must be a JSON object")
     if rule.channel.value == "email" and "password" in config:
-        raise ValueError(
-            "SMTP passwords cannot be stored in channel_config; use password_env"
-        )
+        raise ValueError("SMTP passwords cannot be stored in channel_config; use password_env")
     return json.dumps(config, sort_keys=True)

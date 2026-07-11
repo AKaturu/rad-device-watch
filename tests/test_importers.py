@@ -48,9 +48,7 @@ def test_import_devices_file_not_found():
 def test_import_devices_xlsx(tmp_path: Path):
     pytest.importorskip("openpyxl")
     xlsx_path = tmp_path / "test.xlsx"
-    pd.DataFrame({"name": ["X1"], "manufacturer": ["Philips"]}).to_excel(
-        xlsx_path, index=False
-    )
+    pd.DataFrame({"name": ["X1"], "manufacturer": ["Philips"]}).to_excel(xlsx_path, index=False)
     devices = import_devices(str(xlsx_path))
     assert len(devices) == 1
     assert devices[0].name == "X1"

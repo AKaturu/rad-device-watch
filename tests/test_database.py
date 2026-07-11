@@ -2,9 +2,7 @@ from rad_device_watch.database import Database
 
 
 def test_init_schema_creates_tables(db: Database):
-    tables = db.fetchall(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    )
+    tables = db.fetchall("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     names = [r["name"] for r in tables]
     assert "devices" in names
     assert "downtime_events" in names
