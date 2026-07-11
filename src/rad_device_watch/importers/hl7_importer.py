@@ -153,7 +153,8 @@ def import_hl7_directory(directory: str | Path) -> list[dict]:
             continue
         try:
             raw = fpath.read_text(encoding="utf-8", errors="replace")
-        except Exception:
+        except OSError as exc:
+            logger.warning("Unable to read HL7 file %s: %s", fpath, exc)
             continue
         parsed = parse_hl7_message(raw)
         if parsed:

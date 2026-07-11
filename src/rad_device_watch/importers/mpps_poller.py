@@ -118,5 +118,5 @@ class MppsPoller:
             if val is not None:
                 return str(val).strip()
         except Exception:
-            pass
+            logger.debug("Unable to read MPPS attribute %s", name, exc_info=True)
         return None

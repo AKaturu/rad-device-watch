@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Logged unreadable HL7 inputs and MPPS attribute failures instead of silently discarding them.
 - Merge overlapping downtime intervals and clip events to the requested uptime period
 - Require persisted device resolution for HL7 and MPPS usage records
 - Commit alert history atomically and roll back failed polling transactions
