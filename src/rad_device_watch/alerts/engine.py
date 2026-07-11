@@ -52,11 +52,19 @@ class AlertEngine:
         return AlertRule(**d) if d else None
 
     def delete_rule(self, rule_id: int) -> bool:
-        cur = self.db.execute(
-            "DELETE FROM alert_rules WHERE id = ?", (rule_id,)
-        )
-        self.db.commit()
-        return cur.rowcount > 0
+        try:
+            self.db.execute(
+                "UPDATE alert_history SET alert_rule_id = NULL WHERE alert_rule_id = ?",
+                (rule_id,),
+            )
+            cursor = self.db.execute(
+                "DELETE FROM alert_rules WHERE id = ?", (rule_id,)
+            )
+            self.db.commit()
+            return cursor.rowcount > 0
+        except Exception:
+            self.db.rollback()
+            raise
 
     def _get_metric_value(
         self, metric: AlertMetric, device_id: int
@@ -170,6 +178,17 @@ class AlertEngine:
                 (limit,),
             )
         return [AlertHistory(**self.db.row_to_dict(r)) for r in rows]
+
+    def acknowledge(self, history_id: int, acknowledged_at: str | None = None) -> bool:
+        timestamp = acknowledged_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor = self.db.execute(
+            """UPDATE alert_history
+               SET acknowledged = 1, acknowledged_at = ?
+               WHERE id = ?""",
+            (timestamp, history_id),
+        )
+        self.db.commit()
+        return cursor.rowcount > 0
 
 
 def _validate_channel_config(rule: AlertRule) -> str | None:

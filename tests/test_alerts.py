@@ -223,3 +223,18 @@ def test_poll_rolls_back_all_history_when_delivery_raises(
     row = db.fetchone("SELECT COUNT(*) AS count FROM alert_history")
     assert row is not None
     assert row["count"] == 0
+
+
+def test_acknowledge_alert_history(engine: AlertEngine, db: Database):
+    cursor = db.execute(
+        """INSERT INTO alert_history (triggered_at, message, channel)
+           VALUES (?, ?, ?)""",
+        ("2026-01-01 12:00:00", "Review device", "console"),
+    )
+    db.commit()
+
+    assert engine.acknowledge(cursor.lastrowid, "2026-01-01 13:00:00") is True
+    history = engine.get_history()
+    assert history[0].acknowledged is True
+    assert history[0].acknowledged_at == "2026-01-01 13:00:00"
+    assert engine.acknowledge(9999) is False

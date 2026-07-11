@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Merge overlapping downtime intervals and clip events to the requested uptime period
+- Require persisted device resolution for HL7 and MPPS usage records
+- Commit alert history atomically and roll back failed polling transactions
+- Render webhook payload templates structurally and source SMTP passwords from environment variables
+- Add device update, downtime deletion, alert acknowledgement/deletion, and maintenance CLI workflows
+
 ## v0.1.0 (2026-06-28)
 
 - Initial release with device inventory CRUD

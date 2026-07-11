@@ -54,6 +54,7 @@ rad-device-watch serve
 |---|---|
 | `rad-device-watch init` | Initialize the database schema. |
 | `rad-device-watch device-add` | Register a new device. |
+| `rad-device-watch device-update <id>` | Update selected device fields. |
 | `rad-device-watch device-list` | List all devices. |
 | `rad-device-watch device-get <id>` | Show device details. |
 | `rad-device-watch device-delete <id>` | Remove a device. |
@@ -61,12 +62,19 @@ rad-device-watch serve
 | `rad-device-watch import-dicom <path>` | Extract device info from DICOM files. |
 | `rad-device-watch downtime-log` | Log a downtime event. |
 | `rad-device-watch downtime-list` | List downtime events. |
+| `rad-device-watch downtime-delete <id>` | Delete a downtime event. |
 | `rad-device-watch uptime <start> <end>` | Compute uptime percentage for devices. |
 | `rad-device-watch usage-add` | Record a usage entry. |
 | `rad-device-watch usage-report <start> <end>` | Generate a usage summary report. |
+| `rad-device-watch maintenance-add` | Add a maintenance record. |
+| `rad-device-watch maintenance-list` | List maintenance records. |
+| `rad-device-watch maintenance-complete <id>` | Mark maintenance complete. |
+| `rad-device-watch maintenance-delete <id>` | Delete a maintenance record. |
 | `rad-device-watch alert-add` | Create an alert rule. |
 | `rad-device-watch alert-check` | Evaluate all alert rules. |
 | `rad-device-watch alert-history` | View triggered alerts. |
+| `rad-device-watch alert-acknowledge <id>` | Acknowledge a triggered alert. |
+| `rad-device-watch alert-delete <id>` | Delete an alert rule. |
 | `rad-device-watch export <output_dir>` | Export data to CSV. |
 | `rad-device-watch serve` | Launch the Streamlit dashboard. |
 
@@ -81,6 +89,16 @@ Rules are evaluated periodically and can trigger on any combination of device an
 | `usage_volume` | `gt`, `lt`, `eq` | Total procedure count in the last 7 days. |
 
 Supported alert channels: `console`, `email`, `slack`, and `webhook`.
+
+SMTP passwords are never stored in SQLite. Put the password in an environment
+variable and reference its name in the email channel configuration:
+
+```bash
+export RAD_DEVICE_WATCH_SMTP_PASSWORD="..."
+rad-device-watch alert-add "Email ops" \
+  --metric uptime_pct --condition lt --threshold 95 --channel email \
+  --config '{"smtp_server":"smtp.example.org","username":"alerts","password_env":"RAD_DEVICE_WATCH_SMTP_PASSWORD","recipients":["ops@example.org"]}'
+```
 
 ## Demo Media
 
@@ -110,6 +128,10 @@ Extracts device module tags such as manufacturer, station name, model, serial nu
 ### HL7 v2
 
 Parses ORM, ORU, MDM, and ADT messages using `hl7apy`, extracting device information and procedure data from OBR, OBX, PID, and Z-segments.
+
+HL7 usage and MPPS records require a station-name resolver and are skipped when
+the station is unknown; integrations can pass `DeviceManager(db).resolve_id` to
+`extract_usage_from_hl7(..., resolve_device_id=...)` or `MppsPoller(device_resolver=...)`.
 
 ## Safety And Scope
 
