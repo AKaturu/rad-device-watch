@@ -91,11 +91,7 @@ def extract_devices_from_directory(
         if device is None:
             continue
 
-        key = (
-            device.serial_number
-            or device.station_name
-            or device.name
-        )
+        key = device.serial_number or device.station_name or device.name
         if key and key not in seen:
             seen.add(key)
             devices.append(device)

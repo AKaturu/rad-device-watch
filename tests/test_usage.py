@@ -1,21 +1,9 @@
-from collections.abc import Generator
-from pathlib import Path
-
 import pytest
 
 from rad_device_watch.database import Database
 from rad_device_watch.device_manager import DeviceManager
 from rad_device_watch.models import Device, UsageRecord
 from rad_device_watch.usage import UsageAnalyzer
-
-
-@pytest.fixture
-def db(tmp_path: Path) -> Generator[Database, None, None]:
-    d = Database(tmp_path / "test.db")
-    d.connect()
-    d.init_schema()
-    yield d
-    d.close()
 
 
 @pytest.fixture
@@ -46,12 +34,8 @@ def test_add_records(analyzer: UsageAnalyzer, dev_id: int):
 
 
 def test_list_records(analyzer: UsageAnalyzer, dev_id: int):
-    analyzer.add_record(
-        UsageRecord(device_id=dev_id, procedure_date="2026-01-01")
-    )
-    analyzer.add_record(
-        UsageRecord(device_id=dev_id, procedure_date="2026-01-02")
-    )
+    analyzer.add_record(UsageRecord(device_id=dev_id, procedure_date="2026-01-01"))
+    analyzer.add_record(UsageRecord(device_id=dev_id, procedure_date="2026-01-02"))
     records = analyzer.list_records(device_id=dev_id)
     assert len(records) == 2
 

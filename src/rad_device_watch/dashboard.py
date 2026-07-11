@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import sys
+import os
+from datetime import datetime, timedelta
 
 import streamlit as st
 
+from rad_device_watch.alerts.engine import AlertEngine
 from rad_device_watch.database import Database
 from rad_device_watch.device_manager import DeviceManager
 from rad_device_watch.downtime import DowntimeTracker
+from rad_device_watch.importers.dicom_importer import extract_devices_from_directory
 from rad_device_watch.models import Device, DeviceStatus, DowntimeEvent, UsageRecord
 from rad_device_watch.usage import UsageAnalyzer
 
 
 def _get_db() -> Database:
-    db_arg = None
-    if len(sys.argv) > 1 and sys.argv[-2] == "--db":
-        db_arg = sys.argv[-1]
-    path = db_arg or "rad_device_watch.db"
+    path = os.environ.get("RAD_DEVICE_WATCH_DB", "rad_device_watch.db")
     db = Database(path)
     db.connect()
     db.init_schema()
@@ -102,17 +102,11 @@ with tab_devices:
     st.subheader("Import from DICOM Directory")
     dicom_dir = st.text_input("DICOM directory path")
     if st.button("Scan DICOM Directory") and dicom_dir:
-        from rad_device_watch.importers.dicom_importer import (
-            extract_devices_from_directory,
-        )
-
         with st.spinner("Scanning..."):
             extracted = extract_devices_from_directory(dicom_dir)
             added = 0
             for d in extracted:
-                existing = (
-                    dm.get_by_serial(d.serial_number) if d.serial_number else None
-                )
+                existing = dm.get_by_serial(d.serial_number) if d.serial_number else None
                 if not existing:
                     dm.add(d)
                     added += 1
@@ -219,7 +213,6 @@ with tab_usage:
                 st.rerun()
 
     st.subheader("Usage Summary")
-    from datetime import datetime, timedelta
     end_default = datetime.now().strftime("%Y-%m-%d")
     start_default = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
     col1, col2 = st.columns(2)
@@ -245,8 +238,6 @@ with tab_usage:
             st.metric("Total Procedures", total)
 
 with tab_alerts:
-    from rad_device_watch.alerts.engine import AlertEngine
-
     engine = AlertEngine(db)
     st.subheader("Alert Rules")
     rules = engine.list_rules()

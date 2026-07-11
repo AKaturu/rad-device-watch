@@ -97,17 +97,12 @@ def import_downtime(path: str | Path) -> list[DowntimeEvent]:
                 end_time=_safe_str(row.get("end_time")),
                 duration_minutes=(
                     float(row["duration_minutes"])
-                    if "duration_minutes" in df.columns
-                    and not pd.isna(row.get("duration_minutes"))
+                    if "duration_minutes" in df.columns and not pd.isna(row.get("duration_minutes"))
                     else None
                 ),
-                cause_category=(
-                    CauseCategory(cause_category_raw) if cause_category_raw else None
-                ),
+                cause_category=(CauseCategory(cause_category_raw) if cause_category_raw else None),
                 cause_detail=_safe_str(row.get("cause_detail")),
-                impact_level=(
-                    ImpactLevel(impact_level_raw) if impact_level_raw else None
-                ),
+                impact_level=(ImpactLevel(impact_level_raw) if impact_level_raw else None),
                 created_by=_safe_str(row.get("created_by")) or "csv_import",
             )
         )
@@ -129,8 +124,7 @@ def import_usage(path: str | Path) -> list[UsageRecord]:
                 procedure_date=_required_str(row["procedure_date"], "procedure_date"),
                 procedure_count=(
                     int(row["procedure_count"])
-                    if "procedure_count" in df.columns
-                    and not pd.isna(row.get("procedure_count"))
+                    if "procedure_count" in df.columns and not pd.isna(row.get("procedure_count"))
                     else 1
                 ),
                 modality=_safe_str(row.get("modality")),

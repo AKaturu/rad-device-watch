@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
 
 from rad_device_watch.models import UsageRecord
@@ -15,11 +16,13 @@ class MppsPoller:
         pacs_host: str = "localhost",
         pacs_port: int = 11112,
         pacs_ae_title: str = "PACS",
+        device_resolver: Callable[[str], int | None] | None = None,
     ):
         self.ae_title = ae_title
         self.pacs_host = pacs_host
         self.pacs_port = pacs_port
         self.pacs_ae_title = pacs_ae_title
+        self.device_resolver = device_resolver
 
     def poll(self) -> list[UsageRecord]:
         try:
@@ -61,30 +64,9 @@ class MppsPoller:
 
             if status and results:
                 for ds in results:
-                    station = self._get_attr(ds, "PerformedStationName")
-                    modality = self._get_attr(ds, "Modality")
-                    status_val = self._get_attr(
-                        ds, "PerformedProcedureStepStatus"
-                    )
-                    start_date = self._get_attr(
-                        ds, "PerformedProcedureStepStartDate"
-                    )
-
-                    if station and status_val == "COMPLETED":
-                        date_str = (
-                            f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}"
-                            if start_date and len(start_date) >= 8
-                            else datetime.now().strftime("%Y-%m-%d")
-                        )
-                        records.append(
-                            UsageRecord(
-                                device_id=0,
-                                procedure_date=date_str,
-                                procedure_count=1,
-                                modality=modality,
-                                source="mpps",
-                            )
-                        )
+                    record = self._usage_record(ds)
+                    if record is not None:
+                        records.append(record)
             else:
                 logger.info("MPPS N-GET returned no results or failed")
         except Exception as exc:
@@ -95,6 +77,40 @@ class MppsPoller:
         logger.info("MPPS poll: retrieved %d usage records", len(records))
         return records
 
+    def _usage_record(self, ds: object) -> UsageRecord | None:
+        station = self._get_attr(ds, "PerformedStationName")
+        status = self._get_attr(ds, "PerformedProcedureStepStatus")
+        if not station or status != "COMPLETED":
+            return None
+        if self.device_resolver is None:
+            logger.warning(
+                "MPPS usage skipped for station '%s': no device resolver configured",
+                station,
+            )
+            return None
+        try:
+            device_id = self.device_resolver(station)
+        except Exception as exc:
+            logger.warning("MPPS device resolution failed for station '%s': %s", station, exc)
+            return None
+        if device_id is None or device_id <= 0:
+            logger.warning("MPPS usage skipped for unresolved station '%s'", station)
+            return None
+
+        start_date = self._get_attr(ds, "PerformedProcedureStepStartDate")
+        date_str = (
+            f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}"
+            if start_date and len(start_date) >= 8
+            else datetime.now().strftime("%Y-%m-%d")
+        )
+        return UsageRecord(
+            device_id=device_id,
+            procedure_date=date_str,
+            procedure_count=1,
+            modality=self._get_attr(ds, "Modality"),
+            source="mpps",
+        )
+
     @staticmethod
     def _get_attr(ds, name: str) -> str | None:
         try:
@@ -102,5 +118,5 @@ class MppsPoller:
             if val is not None:
                 return str(val).strip()
         except Exception:
-            pass
+            logger.debug("Unable to read MPPS attribute %s", name, exc_info=True)
         return None

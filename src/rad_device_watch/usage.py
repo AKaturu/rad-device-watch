@@ -48,9 +48,7 @@ class UsageAnalyzer:
         self.db.commit()
         return len(records)
 
-    def list_records(
-        self, device_id: int | None = None, limit: int = 100
-    ) -> list[UsageRecord]:
+    def list_records(self, device_id: int | None = None, limit: int = 100) -> list[UsageRecord]:
         if device_id:
             rows = self.db.fetchall(
                 "SELECT * FROM usage_records WHERE device_id = ? ORDER BY procedure_date DESC LIMIT ?",
@@ -62,8 +60,6 @@ class UsageAnalyzer:
                 (limit,),
             )
         return [UsageRecord(**self.db.row_to_dict(r)) for r in rows]
-
-
 
     def summarize_device(
         self, device_id: int, start_date: str, end_date: str
@@ -119,9 +115,7 @@ class UsageAnalyzer:
 
         return summary
 
-    def summarize_all(
-        self, start_date: str, end_date: str
-    ) -> list[UsageSummary]:
+    def summarize_all(self, start_date: str, end_date: str) -> list[UsageSummary]:
         dev_rows = self.db.fetchall("SELECT id FROM devices ORDER BY name")
         summaries = []
         for dr in dev_rows:
@@ -130,9 +124,7 @@ class UsageAnalyzer:
                 summaries.append(s)
         return summaries
 
-    def total_procedures(
-        self, start_date: str, end_date: str
-    ) -> int:
+    def total_procedures(self, start_date: str, end_date: str) -> int:
         row = self.db.fetchone(
             """SELECT COALESCE(SUM(procedure_count), 0) as total
                FROM usage_records

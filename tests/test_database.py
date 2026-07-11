@@ -1,24 +1,8 @@
-from collections.abc import Generator
-from pathlib import Path
-
-import pytest
-
 from rad_device_watch.database import Database
 
 
-@pytest.fixture
-def db(tmp_path: Path) -> Generator[Database, None, None]:
-    d = Database(tmp_path / "test.db")
-    d.connect()
-    d.init_schema()
-    yield d
-    d.close()
-
-
 def test_init_schema_creates_tables(db: Database):
-    tables = db.fetchall(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    )
+    tables = db.fetchall("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     names = [r["name"] for r in tables]
     assert "devices" in names
     assert "downtime_events" in names
@@ -59,3 +43,27 @@ def test_commit(db: Database):
     row = db.fetchone("SELECT COUNT(*) as cnt FROM devices")
     assert row is not None
     assert row["cnt"] == 1
+
+
+def test_schema_redacts_legacy_plaintext_smtp_password(db: Database):
+    db.execute(
+        """INSERT INTO alert_rules
+           (name, metric, condition, threshold, channel, channel_config)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (
+            "Legacy email",
+            "usage_volume",
+            "gt",
+            10,
+            "email",
+            '{"username":"alerts","password":"secret"}',
+        ),
+    )
+    db.commit()
+
+    db.init_schema()
+
+    row = db.fetchone("SELECT channel_config FROM alert_rules WHERE name = ?", ("Legacy email",))
+    assert row is not None
+    assert "secret" not in row["channel_config"]
+    assert "RAD_DEVICE_WATCH_SMTP_PASSWORD" in row["channel_config"]

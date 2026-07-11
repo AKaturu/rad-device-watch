@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -10,13 +14,19 @@ from rad_device_watch.alerts.engine import AlertEngine
 from rad_device_watch.database import Database
 from rad_device_watch.device_manager import DeviceManager
 from rad_device_watch.downtime import DowntimeTracker
+from rad_device_watch.maintenance import MaintenanceManager
 from rad_device_watch.models import (
+    AlertChannel,
+    AlertCondition,
+    AlertMetric,
     AlertRule,
     CauseCategory,
     Device,
     DeviceStatus,
     DowntimeEvent,
     ImpactLevel,
+    MaintenanceRecord,
+    MaintenanceType,
     UsageRecord,
 )
 from rad_device_watch.reporter import (
@@ -50,9 +60,7 @@ def _get_db(db_path: str | None) -> Database:
 
 @app.command()
 def init(
-    db_path: str = typer.Option(
-        _DEFAULT_DB, "--db", help="Path to SQLite database file"
-    ),
+    db_path: str = typer.Option(_DEFAULT_DB, "--db", help="Path to SQLite database file"),
 ):
     """Initialize a new rad-device-watch database."""
     db = _get_db(db_path)
@@ -91,6 +99,58 @@ def device_add(
     dev_id = dm.add(dev)
     console.print(f"[green]Device added with ID {dev_id}[/green]")
     db.close()
+
+
+@app.command()
+def device_update(
+    device_id: int = typer.Argument(..., help="Device ID"),
+    name: str | None = typer.Option(None, "--name"),
+    manufacturer: str | None = typer.Option(None, "--manufacturer", "-m"),
+    model: str | None = typer.Option(None, "--model"),
+    serial: str | None = typer.Option(None, "--serial", "-s"),
+    station: str | None = typer.Option(None, "--station"),
+    modality: str | None = typer.Option(None, "--modality"),
+    location: str | None = typer.Option(None, "--location", "-l"),
+    department: str | None = typer.Option(None, "--department", "-d"),
+    status: str | None = typer.Option(None, "--status"),
+    notes: str | None = typer.Option(None, "--notes"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Update supplied fields on an existing device."""
+    parsed_status: DeviceStatus | None = None
+    if status is not None:
+        try:
+            parsed_status = DeviceStatus(status)
+        except ValueError:
+            console.print(f"[red]Invalid status: {status}[/red]")
+            raise typer.Exit(1) from None
+
+    db = _get_db(db_path)
+    manager = DeviceManager(db)
+    device = manager.get(device_id)
+    if device is None:
+        db.close()
+        console.print(f"[red]Device {device_id} not found[/red]")
+        raise typer.Exit(1)
+
+    updates = {
+        "name": name,
+        "manufacturer": manufacturer,
+        "model": model,
+        "serial_number": serial,
+        "station_name": station,
+        "modality": modality,
+        "location": location,
+        "department": department,
+        "status": parsed_status,
+        "notes": notes,
+    }
+    for field, value in updates.items():
+        if value is not None:
+            setattr(device, field, value)
+    manager.update(device)
+    db.close()
+    console.print(f"[green]Device {device_id} updated[/green]")
 
 
 @app.command()
@@ -153,15 +213,11 @@ def device_delete(
 
 @app.command()
 def import_cmd(
-    devices: str | None = typer.Option(
-        None, "--devices", help="CSV/Excel file for device import"
-    ),
+    devices: str | None = typer.Option(None, "--devices", help="CSV/Excel file for device import"),
     downtime: str | None = typer.Option(
         None, "--downtime", help="CSV/Excel file for downtime import"
     ),
-    usage: str | None = typer.Option(
-        None, "--usage", help="CSV/Excel file for usage import"
-    ),
+    usage: str | None = typer.Option(None, "--usage", help="CSV/Excel file for usage import"),
     db_path: str | None = typer.Option(None, "--db"),
 ):
     """Import data from CSV/Excel files."""
@@ -295,6 +351,7 @@ def downtime_list(
         console.print("[yellow]No downtime events found.[/yellow]")
     else:
         from rich.table import Table
+
         table = Table(title=f"Downtime Events ({len(events)})")
         table.add_column("ID", style="cyan")
         table.add_column("Device ID")
@@ -319,6 +376,21 @@ def downtime_list(
     db.close()
 
 
+@app.command()
+def downtime_delete(
+    event_id: int = typer.Argument(..., help="Downtime event ID"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Delete a downtime event."""
+    db = _get_db(db_path)
+    deleted = DowntimeTracker(db).delete_event(event_id)
+    db.close()
+    if not deleted:
+        console.print(f"[red]Downtime event {event_id} not found[/red]")
+        raise typer.Exit(1)
+    console.print(f"[green]Downtime event {event_id} deleted[/green]")
+
+
 # ── uptime ──────────────────────────────────────────────────────────────
 
 
@@ -327,9 +399,7 @@ def uptime(
     period_start: str = typer.Argument(
         ..., help="Period start (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)"
     ),
-    period_end: str = typer.Argument(
-        ..., help="Period end"
-    ),
+    period_end: str = typer.Argument(..., help="Period end"),
     device_id: int | None = typer.Option(None, "--device", "-d"),
     db_path: str | None = typer.Option(None, "--db"),
 ):
@@ -394,6 +464,112 @@ def usage_report(
     db.close()
 
 
+# ── maintenance ─────────────────────────────────────────────────────────
+
+
+@app.command()
+def maintenance_add(
+    device_id: int = typer.Argument(..., help="Device ID"),
+    maintenance_type: str = typer.Option(
+        ..., "--type", help="preventive, corrective, or calibration"
+    ),
+    scheduled_date: str | None = typer.Option(None, "--scheduled"),
+    completed_date: str | None = typer.Option(None, "--completed"),
+    description: str | None = typer.Option(None, "--description"),
+    vendor: str | None = typer.Option(None, "--vendor"),
+    cost: float | None = typer.Option(None, "--cost"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Add a maintenance record for a device."""
+    try:
+        parsed_type = MaintenanceType(maintenance_type)
+    except ValueError:
+        console.print(f"[red]Invalid maintenance type: {maintenance_type}[/red]")
+        raise typer.Exit(1) from None
+
+    db = _get_db(db_path)
+    manager = MaintenanceManager(db)
+    try:
+        record_id = manager.add(
+            MaintenanceRecord(
+                device_id=device_id,
+                maintenance_type=parsed_type,
+                scheduled_date=scheduled_date,
+                completed_date=completed_date,
+                description=description,
+                vendor=vendor,
+                cost=cost,
+            )
+        )
+    except ValueError as exc:
+        db.close()
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    db.close()
+    console.print(f"[green]Maintenance record {record_id} added[/green]")
+
+
+@app.command()
+def maintenance_list(
+    device_id: int | None = typer.Option(None, "--device", "-d"),
+    pending: bool = typer.Option(False, "--pending", help="Show incomplete records only"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """List maintenance records."""
+    from rich.table import Table
+
+    db = _get_db(db_path)
+    records = MaintenanceManager(db).list_records(device_id=device_id, pending_only=pending)
+    db.close()
+
+    table = Table(title=f"Maintenance Records ({len(records)})")
+    for heading in ("ID", "Device", "Type", "Scheduled", "Completed", "Vendor", "Cost"):
+        table.add_column(heading)
+    for record in records:
+        table.add_row(
+            str(record.id or ""),
+            str(record.device_id),
+            record.maintenance_type.value,
+            record.scheduled_date or "",
+            record.completed_date or "",
+            record.vendor or "",
+            f"{record.cost:.2f}" if record.cost is not None else "",
+        )
+    console.print(table)
+
+
+@app.command()
+def maintenance_complete(
+    record_id: int = typer.Argument(..., help="Maintenance record ID"),
+    completed_date: str | None = typer.Option(None, "--date"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Mark a maintenance record complete."""
+    date = completed_date or datetime.now().strftime("%Y-%m-%d")
+    db = _get_db(db_path)
+    completed = MaintenanceManager(db).complete(record_id, date)
+    db.close()
+    if not completed:
+        console.print(f"[red]Maintenance record {record_id} not found[/red]")
+        raise typer.Exit(1)
+    console.print(f"[green]Maintenance record {record_id} completed[/green]")
+
+
+@app.command()
+def maintenance_delete(
+    record_id: int = typer.Argument(..., help="Maintenance record ID"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Delete a maintenance record."""
+    db = _get_db(db_path)
+    deleted = MaintenanceManager(db).delete(record_id)
+    db.close()
+    if not deleted:
+        console.print(f"[red]Maintenance record {record_id} not found[/red]")
+        raise typer.Exit(1)
+    console.print(f"[green]Maintenance record {record_id} deleted[/green]")
+
+
 # ── alert ───────────────────────────────────────────────────────────────
 
 
@@ -403,18 +579,17 @@ def alert_add(
     metric: str = typer.Option(
         ..., "--metric", "-m", help="Metric: downtime_duration, uptime_pct, usage_volume"
     ),
-    condition: str = typer.Option(
-        ..., "--condition", "-c", help="Condition: gt, lt, eq"
-    ),
+    condition: str = typer.Option(..., "--condition", "-c", help="Condition: gt, lt, eq"),
     threshold: float = typer.Option(..., "--threshold", "-t", help="Threshold value"),
     channel: str = typer.Option(
         "console", "--channel", help="Channel: console, email, slack, webhook"
     ),
+    channel_config: str | None = typer.Option(
+        None, "--config", help="Channel configuration as a JSON object"
+    ),
     db_path: str | None = typer.Option(None, "--db"),
 ):
     """Add an alert rule."""
-    from rad_device_watch.models import AlertChannel, AlertCondition, AlertMetric
-
     try:
         am = AlertMetric(metric)
     except ValueError:
@@ -439,8 +614,14 @@ def alert_add(
         condition=ac,
         threshold=threshold,
         channel=ach,
+        channel_config=channel_config,
     )
-    rule_id = engine.add_rule(rule)
+    try:
+        rule_id = engine.add_rule(rule)
+    except ValueError as exc:
+        db.close()
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
     console.print(f"[green]Alert rule '{name}' added with ID {rule_id}[/green]")
     db.close()
 
@@ -475,14 +656,42 @@ def alert_history(
     db.close()
 
 
+@app.command()
+def alert_acknowledge(
+    history_id: int = typer.Argument(..., help="Alert history ID"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Acknowledge a triggered alert."""
+    db = _get_db(db_path)
+    acknowledged = AlertEngine(db).acknowledge(history_id)
+    db.close()
+    if not acknowledged:
+        console.print(f"[red]Alert history {history_id} not found[/red]")
+        raise typer.Exit(1)
+    console.print(f"[green]Alert history {history_id} acknowledged[/green]")
+
+
+@app.command()
+def alert_delete(
+    rule_id: int = typer.Argument(..., help="Alert rule ID"),
+    db_path: str | None = typer.Option(None, "--db"),
+):
+    """Delete an alert rule."""
+    db = _get_db(db_path)
+    deleted = AlertEngine(db).delete_rule(rule_id)
+    db.close()
+    if not deleted:
+        console.print(f"[red]Alert rule {rule_id} not found[/red]")
+        raise typer.Exit(1)
+    console.print(f"[green]Alert rule {rule_id} deleted[/green]")
+
+
 # ── export ──────────────────────────────────────────────────────────────
 
 
 @app.command()
 def export(
-    output_dir: str = typer.Argument(
-        ".", help="Output directory for CSV files"
-    ),
+    output_dir: str = typer.Argument(".", help="Output directory for CSV files"),
     device: bool = typer.Option(True, "--device/--no-device"),
     downtime: bool = typer.Option(True, "--downtime/--no-downtime"),
     usage: bool = typer.Option(True, "--usage/--no-usage"),
@@ -526,9 +735,6 @@ def serve(
     port: int = typer.Option(8501, "--port", "-p", help="Streamlit port"),
 ):
     """Launch the Streamlit dashboard."""
-    import subprocess
-    import sys
-
     cmd = [
         sys.executable,
         "-m",
@@ -538,8 +744,7 @@ def serve(
         "--server.port",
         str(port),
     ]
-    if db_path:
-        cmd.extend(["--", "--db", db_path])
+    env = {**os.environ, "RAD_DEVICE_WATCH_DB": db_path or _DEFAULT_DB}
 
     console.print(f"[green]Launching dashboard on port {port}...[/green]")
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, env=env)

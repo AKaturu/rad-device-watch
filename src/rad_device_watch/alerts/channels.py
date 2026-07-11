@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
+import os
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -10,6 +10,7 @@ from typing import Protocol
 import httpx
 
 logger = logging.getLogger(__name__)
+DEFAULT_SMTP_PASSWORD_ENV = "RAD_DEVICE_WATCH_SMTP_PASSWORD"
 
 
 class AlertChannel(Protocol):
@@ -31,7 +32,11 @@ class EmailChannel:
         sender = cfg.get("sender", "rad-device-watch@localhost")
         recipients = cfg.get("recipients", [])
         username = cfg.get("username")
-        password = cfg.get("password")
+        if "password" in cfg:
+            logger.error("Email alert refused: plaintext SMTP passwords are not supported")
+            return False
+        password_env = str(cfg.get("password_env") or DEFAULT_SMTP_PASSWORD_ENV)
+        password = os.getenv(password_env)
         use_tls = cfg.get("use_tls", True)
 
         if isinstance(recipients, str):
@@ -39,6 +44,11 @@ class EmailChannel:
 
         if not recipients:
             logger.warning("Email alert skipped: no recipients configured")
+            return False
+        if username and not password:
+            logger.warning(
+                "Email alert skipped: configured SMTP password environment variable is unset"
+            )
             return False
 
         msg = EmailMessage()
@@ -88,10 +98,7 @@ class WebhookChannel:
             return False
         headers = cfg.get("headers", {"Content-Type": "application/json"})
         payload = cfg.get("payload_template", {"text": "{{message}}"})
-        payload_str = json.dumps(payload)
-        rendered = json.loads(
-            payload_str.replace("{{message}}", json.dumps(message).strip('"'))
-        )
+        rendered = _render_payload(payload, message)
         try:
             resp = httpx.post(url, json=rendered, headers=headers, timeout=10)
             resp.raise_for_status()
@@ -110,3 +117,14 @@ def get_channel(name: str) -> AlertChannel:
         "webhook": WebhookChannel(),
     }
     return mapping.get(name, ConsoleChannel())
+
+
+def _render_payload(value: object, message: str) -> object:
+    """Render message placeholders without serializing and reparsing JSON."""
+    if isinstance(value, str):
+        return value.replace("{{message}}", message)
+    if isinstance(value, list):
+        return [_render_payload(item, message) for item in value]
+    if isinstance(value, dict):
+        return {key: _render_payload(item, message) for key, item in value.items()}
+    return value
