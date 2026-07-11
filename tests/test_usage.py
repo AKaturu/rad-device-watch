@@ -1,21 +1,9 @@
-from collections.abc import Generator
-from pathlib import Path
-
 import pytest
 
 from rad_device_watch.database import Database
 from rad_device_watch.device_manager import DeviceManager
 from rad_device_watch.models import Device, UsageRecord
 from rad_device_watch.usage import UsageAnalyzer
-
-
-@pytest.fixture
-def db(tmp_path: Path) -> Generator[Database, None, None]:
-    d = Database(tmp_path / "test.db")
-    d.connect()
-    d.init_schema()
-    yield d
-    d.close()
 
 
 @pytest.fixture

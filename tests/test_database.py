@@ -1,18 +1,4 @@
-from collections.abc import Generator
-from pathlib import Path
-
-import pytest
-
 from rad_device_watch.database import Database
-
-
-@pytest.fixture
-def db(tmp_path: Path) -> Generator[Database, None, None]:
-    d = Database(tmp_path / "test.db")
-    d.connect()
-    d.init_schema()
-    yield d
-    d.close()
 
 
 def test_init_schema_creates_tables(db: Database):

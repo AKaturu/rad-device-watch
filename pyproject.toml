@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "rad-device-watch"
 version = "0.1.0"
 description = "Radiology device monitoring — inventory, uptime/downtime, usage auditing, and alerting."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Abinav Katuru" }]
 keywords = [
@@ -23,10 +24,10 @@ keywords = [
     "quality-improvement",
 ]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Intended Audience :: Healthcare Industry",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
@@ -73,6 +74,9 @@ Homepage = "https://github.com/AKaturu/rad-device-watch"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+rad_device_watch = ["py.typed"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -91,7 +95,6 @@ quote-style = "double"
 [tool.mypy]
 python_version = "3.12"
 strict = false
-ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = true

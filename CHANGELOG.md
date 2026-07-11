@@ -7,6 +7,9 @@
 - Commit alert history atomically and roll back failed polling transactions
 - Render webhook payload templates structurally and source SMTP passwords from environment variables
 - Add device update, downtime deletion, alert acknowledgement/deletion, and maintenance CLI workflows
+- Pass dashboard database selection through an explicit environment contract and add AppTest coverage
+- Centralize SQLite test fixtures and publish PEP 561 typing metadata
+- Add Python 3.13 CI coverage and modern SPDX package metadata
 
 ## v0.1.0 (2026-06-28)
 

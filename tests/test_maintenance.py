@@ -1,23 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Generator
-from pathlib import Path
-
 import pytest
 
 from rad_device_watch.database import Database
 from rad_device_watch.device_manager import DeviceManager
 from rad_device_watch.maintenance import MaintenanceManager
 from rad_device_watch.models import Device, MaintenanceRecord, MaintenanceType
-
-
-@pytest.fixture
-def db(tmp_path: Path) -> Generator[Database, None, None]:
-    database = Database(tmp_path / "test.db")
-    database.connect()
-    database.init_schema()
-    yield database
-    database.close()
 
 
 def test_maintenance_lifecycle(db: Database) -> None:

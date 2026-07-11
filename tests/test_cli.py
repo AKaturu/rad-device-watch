@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
@@ -141,3 +142,25 @@ def test_alert_add_rejects_plaintext_password_config(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "password_env" in result.output
+
+
+def test_serve_passes_database_path_through_environment(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[list[str], dict[str, str]]] = []
+
+    def fake_run(command: list[str], *, check: bool, env: dict[str, str]):
+        assert check is True
+        calls.append((command, env))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("rad_device_watch.cli.subprocess.run", fake_run)
+    db_path = tmp_path / "dashboard.db"
+
+    result = runner.invoke(
+        app,
+        ["serve", "--db", str(db_path), "--port", "8765"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls[0][1]["RAD_DEVICE_WATCH_DB"] == str(db_path)
+    assert "--" not in calls[0][0]
+    assert calls[0][0][-2:] == ["--server.port", "8765"]

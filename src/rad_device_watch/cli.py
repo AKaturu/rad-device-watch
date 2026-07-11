@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -745,9 +748,6 @@ def serve(
     port: int = typer.Option(8501, "--port", "-p", help="Streamlit port"),
 ):
     """Launch the Streamlit dashboard."""
-    import subprocess
-    import sys
-
     cmd = [
         sys.executable,
         "-m",
@@ -757,8 +757,7 @@ def serve(
         "--server.port",
         str(port),
     ]
-    if db_path:
-        cmd.extend(["--", "--db", db_path])
+    env = {**os.environ, "RAD_DEVICE_WATCH_DB": db_path or _DEFAULT_DB}
 
     console.print(f"[green]Launching dashboard on port {port}...[/green]")
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, env=env)
