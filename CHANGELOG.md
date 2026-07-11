@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Removed password-related configuration values from alert and migration log messages.
 - Pinned every GitHub Action dependency to an immutable commit SHA.
 - Logged unreadable HL7 inputs and MPPS attribute failures instead of silently discarding them.
 - Merge overlapping downtime intervals and clip events to the requested uptime period

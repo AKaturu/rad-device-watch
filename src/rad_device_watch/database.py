@@ -177,7 +177,7 @@ def _redact_plaintext_smtp_passwords(conn: sqlite3.Connection) -> None:
             (json.dumps(config, sort_keys=True), row["id"]),
         )
         logger.warning(
-            "Removed a plaintext SMTP password from alert rule %s; configure %s instead",
+            "Removed a plaintext SMTP password from alert rule %s; configure the password "
+            "environment variable instead",
             row["id"],
-            config["password_env"],
         )
