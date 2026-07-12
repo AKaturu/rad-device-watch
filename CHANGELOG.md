@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Upgraded CI and release workflows to Node 24-compatible immutable action revisions.
 - Removed password-related configuration values from alert and migration log messages.
 - Pinned every GitHub Action dependency to an immutable commit SHA.
 - Logged unreadable HL7 inputs and MPPS attribute failures instead of silently discarding them.
